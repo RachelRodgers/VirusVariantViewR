@@ -1,0 +1,22 @@
+{
+    "collab_server" : "",
+    "contents" : "",
+    "created" : 1544645323498.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "70136008",
+    "id" : "CC151BF7",
+    "lastKnownWriteTime" : 1544646326,
+    "last_content_update" : 1544646326108,
+    "path" : "C:/Users/rache/Desktop/Projects/_Baldridge_Lab/_RUMSPRINGA/rumspringa/rumspringa_shiny_app/app.R",
+    "project_path" : "app.R",
+    "properties" : {
+        "cursorPosition" : "23,33",
+        "scrollLine" : "4"
+    },
+    "relative_order" : 1,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

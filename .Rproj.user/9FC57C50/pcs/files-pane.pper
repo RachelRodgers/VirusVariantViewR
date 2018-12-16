@@ -1,8 +1,8 @@
 {
-    "path" : "C:/Users/rache/Desktop/Projects/_Baldridge_Lab/_RUMSPRINGA/rumspringa/rumspringa_shiny_app",
+    "path" : "C:/Users/rache/Desktop/Projects/_Baldridge_Lab/_RUMSPRINGA/rumspringa/alignment_files",
     "sortOrder" : [
         {
-            "ascending" : true,
+            "ascending" : false,
             "columnIndex" : 2
         }
     ]

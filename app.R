@@ -7,7 +7,7 @@ library("data.table")
 library("tidyverse")
 
 options(shiny.sanitize.errors = FALSE)
-options(ucscChromosomeNames = FALSE)
+options(ucscChromosomeNames = FALSE) # for Gvis
 
 #----- Function Definitions -----#
 
@@ -33,8 +33,6 @@ GetVCF <- function(sample) {
 
 PlotCoverage <- function(sample, positions = NULL, widths = 1) {
   
-  options(useChromosomeNames = FALSE)
-  
   # Get the coverage file
   bedgraphDT <- fread(paste0("../alignment_files/", sample, "_sorted.bedGraph"),
                       col.names = c("chromosome", "start", "end", "value"))
@@ -46,7 +44,7 @@ PlotCoverage <- function(sample, positions = NULL, widths = 1) {
                       background.title = "slategrey", col.histogram = "grey28",
                       fontsize = 20)
   
-  # is positions and widths null? 
+  # is positions null? 
   # if yes - plot tracks w/o highlights 
   # if no - plot tracks with highlights
   if (is.null(positions)) {
@@ -59,23 +57,6 @@ PlotCoverage <- function(sample, positions = NULL, widths = 1) {
                              fill = "#FFE3E6b8")
     coveragePlot <- plotTracks(list(gtrack, htrack))
   }
-
-  
-  
-  # Generate a highlight track that uses info from the VCF file to mark the
-  #   locations of the variants (get the width from the number of characters
-  #   in the alternative allele)
-  #vcfFile <- GetVCF(sample)
-  #startVector <- as.numeric(vcfFile$Position) # goes to start argument
-  #widthVector <- map_int(.x = as.character(vcfFile$Alternative), 
-   #                      .f = nchar) # goes to width argument
-  #htrack <- HighlightTrack(trackList = list(dtrack),
-  #                         start = startVector,
-  #                         width = widthVector,
-  #                         inBackground = FALSE,
-  #                         fill = "#FFE3E6b8")
-  # Plot
-  #coveragePlot <- plotTracks(list(gtrack, htrack))
 }
 
 #----- Set up Data Table for App -----#
@@ -140,21 +121,15 @@ ui <- navbarPage(
   tabPanel(title = "Variants", 
            textInput("varTabInput", "Row ID"),
            DT::DTOutput("varTable"),
-           verbatimTextOutput("cell_clicked", TRUE),
-           verbatimTextOutput("cell_selected", TRUE),
            plotOutput("coveragePlot"))
-  
-  #tabPanel(title = "Coverage", textInput("covPlotInput", "Row ID"),
-           #plotOutput("coveragePlot"))
-  
 )
 
 server <- function(input, output, session) {
   
   # columnDefs - hide the 3rd column (number primary alignments) 
-  #   which is index 2 in this case
+  #   which is index 2 in the DT object
   # formatStyle - add CSS style 'cursor: pointer' to the 1st column (i.e. sample)
-  #   which is index 1 in this case
+  #   which is index 1 in in the DT object
   output$sampleDataTable <- DT::renderDataTable({
     
     data = datatable(sampleData, selection = "single", rownames = FALSE,
@@ -170,11 +145,10 @@ server <- function(input, output, session) {
   observeEvent(input$sampleDataTable_cell_clicked, {
     
     info <- input$sampleDataTable_cell_clicked
-    # info$value will return the Sample that can be passed to both GetVCF()
-    #   and PlotCoverage()
+    # info$value will return the Sample clicked
 
     # do nothing if not clicked yet, or the clicked cell is not in the 1st col
-    #   which is index 0 in this case
+    #   which is (index 0 for DT object)
     if (is.null(info$value) || info$col != 0) return()
     
     # otherwise, change the selected tabs on the client
@@ -188,133 +162,62 @@ server <- function(input, output, session) {
                        rownames = FALSE) %>%
         formatStyle(columns = 2, cursor = "pointer")
     })
-    
+    # First drawing of plot
     output$coveragePlot <- renderPlot({
       withProgress(message = "drawing plot", value = 0.9, {
         PlotCoverage(sample = info$value)
       })
     })
-    
+    # Additional plot renderings when "positions" clicked on in VCF table
     cell_selected_reactive <- eventReactive(input$varTable_cells_selected, {
-      
-      originalMatrix <- input$varTable_cells_selected
-      
-      if (!(all(is.na(originalMatrix)))) {
-        
-        filteredMatrix <- originalMatrix[originalMatrix[ , 2] == 1, , drop = FALSE]
-        
-        if (!(all(is.na(filteredMatrix)))) {
-          
-      
-        # because of 0 - indexing
-        newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
-        vcf <- GetVCF(info$value)[newMatrix]
-        
-        output$coveragePlot <- renderPlot({
-          withProgress(message = "drawing plot", value = 0.9, {
-            PlotCoverage(sample = info$value, positions = as.numeric(vcf))
-            })
-          })
-        
-      } else {
-        
-        output$coveragePlot <- renderPlot({
-          withProgress(message = "drawing plot", value = 0.9, {
-            PlotCoverage(sample = info$value)
-          })
-        })
-      }
-      } else {
-        
-        output$coveragePlot <- renderPlot({
-          withProgress(message = "drawing plot", value = 0.9, {
-            PlotCoverage(sample = info$value)
-          })
-        })
-      }
-      
+      input$varTable_cells_selected
     })
     
-    output$cell_clicked <- renderPrint(cell_selected_reactive())
-
+    output$coveragePlot <- renderPlot({
+      # if originalMatrix is not empty (at least one cell is selected)
+      #   filter out any cells that are not from the "position" column (DT 
+      #   index 1) because we only want the position value.
+      originalMatrix <- cell_selected_reactive()
+      if (!(all(is.na(originalMatrix)))) {
+        filteredMatrix <- originalMatrix[originalMatrix[ , 2] == 1, , 
+                                         drop = FALSE]
+        
+        if (!(all(is.na(filteredMatrix)))) {
+          # if something is left in the filtered matrix, continue
+          # First adjust the index values in the returned matrix,
+          # because the DT object is 0-indexed, but the data frame is 1-indexed
+          # (add 1 to the column values in the filtered matrix)
+          newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
+          
+          vcf <- GetVCF(info$value)[newMatrix]
+          
+          PlotCoverage(sample = info$value, positions = as.numeric(vcf))
+          
+          #output$coveragePlot <- renderPlot({
+           # PlotCoverage(sample = info$value, positions = as.numeric(vcf))
+          #})
+          
+        } else {
+          PlotCoverage(sample = info$value)
+          #output$coveragePlot <- renderPlot({
+           # PlotCoverage(sample = info$value)
+          #})
+        } # end of nested if
+        
+      } else {
+        PlotCoverage(sample = info$value)
+        #output$coveragePlot <- renderPlot({
+        #  PlotCoverage(sample = info$value)
+        #})
+      } # end of outermost if
+      })
   })
 }
-
-    
-    
-    
-    # each time cell_clicked event is fired, get $value, check list for
-    #   $value, add if not in list, remove if it does
-    
-    #output$coveragePlot <- renderPlot({
-      
-    #})
-    
-    
-    
-    #output$cell_clicked <- renderPrint(input$varTable_cell_clicked)
-    #output$cell_selected <- renderPrint(input$varTable_cells_selected)
-
-    #output$test <- renderPrint(input$varTable_cell_clicked)
-    
-    # NOW - put some kind of eventReactive or observeEvent....as long as
-    #  output$test > 0, and which updates every time output$test updates
-    #   and re-render the coverage plot with the highlights
-    
-    #observeEvent(input$varTable_cell_clicked, {
-      
-     # variantInfo <- input$varTable_cells_selected
-      #showOutput <- eventReactive(variantInfo, {
-       # info <- variantInfo
-        #return(info)
-      #})
-      #output$test <- renderPrint(showOutput())
-      # do nothing if not yet clicked, or clicked cell isn't in the 2nd col
-      #   which is index 1 in this case
-      #if (is.null(variantInfo$value) || variantInfo$col != 1) return()
-      
-      #positionSelected <- as.integer(variantInfo$value)
-
-      # update the coverage plot with highlight tracks
-      #  this needs to run different when a new sample is selected
-      #altAlleleWidth <- reactive({
-       # vcf <- GetVCF(info$value)
-      #  vcfRow <- subset(vcf, vcf$Position == positionSelected)
-      #  alternative <- vcfRow[ , "Alternative"]
-      #  altWidth <- nchar(alternative)
-      #  return(altWidth)
-      #})
-      
-      #output$test <- renderPrint(variantInfo)
-      
-      #output$coveragePlot <- renderPlot({
-      #  PlotCoverage(sample = info$value, positions = positionSelected,
-      #               widths = altAlleleWidth())
-      #})
-      
-    #}) # end of nested observeEvent()
-    
-  #})# end of outer-most observeEvent()
-  
-#}
 
 # Run the application 
 shinyApp(ui = ui, server = server)
 
 
-# testing how to read in a VCF file
-
-#sample <- "Baldridge_10"
-#variantSample <- paste0("../../variants/", sample, "_variants.vcf")
-#vcfFile <- read.delim(variantSample,comment.char = "#", header = FALSE, colClasses = "character")
-#vcfHeaders <- c("RefGenome", "Position", "ID", "Reference", "Alternative","Quality", "Filter", "Info", "Format", "Values")
-#names(vcfFile) <- vcfHeaders
-# The last number in Values will be the allelic depth - unfiltered number of 
-#   reads supporting the reported allele(s)
-#vcfFileFormatted <- vcfFile %>%
-  #mutate("AllelicDepth" = map_chr(.x = str_split(Values, pattern = ","),
-   #                                .f = tail, n = 1))
-#vcfFileFinal <- select(vcfFileFormatted, -c("Filter", "Info", "Format", "Values"))
 
 # testing how to parse out the VCF file to get info for HighlightTrack
 

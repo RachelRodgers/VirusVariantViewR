@@ -162,16 +162,12 @@ server <- function(input, output, session) {
                        rownames = FALSE) %>%
         formatStyle(columns = 2, cursor = "pointer")
     })
-    # First drawing of plot
-    output$coveragePlot <- renderPlot({
-      withProgress(message = "drawing plot", value = 0.9, {
-        PlotCoverage(sample = info$value)
-      })
-    })
-    # Additional plot renderings when "positions" clicked on in VCF table
+
     cell_selected_reactive <- eventReactive(input$varTable_cells_selected, {
       input$varTable_cells_selected
     })
+    
+    # Coverage plot will render initially even w/o the eventReactive() triggering
     
     output$coveragePlot <- renderPlot({
       # if originalMatrix is not empty (at least one cell is selected)
@@ -193,22 +189,12 @@ server <- function(input, output, session) {
           
           PlotCoverage(sample = info$value, positions = as.numeric(vcf))
           
-          #output$coveragePlot <- renderPlot({
-           # PlotCoverage(sample = info$value, positions = as.numeric(vcf))
-          #})
-          
         } else {
           PlotCoverage(sample = info$value)
-          #output$coveragePlot <- renderPlot({
-           # PlotCoverage(sample = info$value)
-          #})
         } # end of nested if
         
       } else {
         PlotCoverage(sample = info$value)
-        #output$coveragePlot <- renderPlot({
-        #  PlotCoverage(sample = info$value)
-        #})
       } # end of outermost if
       })
   })

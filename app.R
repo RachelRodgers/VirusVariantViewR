@@ -73,6 +73,7 @@ rawFiles <- list.files(path = "../sample_data/genome_coverage/",
 
 # Some constants for calculation/formatting avg. genome coverage:
 genome_size <- 7383
+
 # column names determined from documentation at 
 # https://bedtools.readthedocs.io/en/latest/content/tools/genomecov.html
 columnNames <- c("chromosome", "depth", "number_of_bases",
@@ -109,6 +110,8 @@ names(sampleData) <- c("Sample", "Total Reads", "Primary Alignments",
                        "% MNV", "Average Coverage")
 sampleData$Sample <- as.character(sampleData$Sample)
 
+previousMtxSize <- 0
+
 #--------------------- Format, Run App ---------------------#
 
 ui <- navbarPage(
@@ -121,10 +124,12 @@ ui <- navbarPage(
   tabPanel(title = "Variants", 
            textInput("varTabInput", "Row ID"),
            DT::DTOutput("varTable"),
+           verbatimTextOutput("text_output"),
            plotOutput("coveragePlot"))
 )
 
 server <- function(input, output, session) {
+  
   
   # columnDefs - hide the 3rd column (number primary alignments) 
   #   which is index 2 in the DT object
@@ -144,16 +149,18 @@ server <- function(input, output, session) {
   
   observeEvent(input$sampleDataTable_cell_clicked, {
     
+    previousMtxSize <<- 0
+    
     info <- input$sampleDataTable_cell_clicked
     # info$value will return the Sample clicked
-
+    
     # do nothing if not clicked yet, or the clicked cell is not in the 1st col
     #   which is (index 0 for DT object)
     if (is.null(info$value) || info$col != 0) return()
     
     # otherwise, change the selected tabs on the client
     updateTabsetPanel(session, "navbarPage", selected = "Variants")
-  
+    
     updateTextInput(session, "varTabInput", value = info$value)
     
     output$varTable <- DT::renderDataTable({
@@ -162,42 +169,71 @@ server <- function(input, output, session) {
                        rownames = FALSE) %>%
         formatStyle(columns = 2, cursor = "pointer")
     })
-
-    cell_selected_reactive <- eventReactive(input$varTable_cells_selected, {
-      input$varTable_cells_selected
-    })
     
-    # Coverage plot will render initially even w/o the eventReactive() triggering
-    
+    # First renderPlot
     output$coveragePlot <- renderPlot({
-      # if originalMatrix is not empty (at least one cell is selected)
-      #   filter out any cells that are not from the "position" column (DT 
-      #   index 1) because we only want the position value.
-      originalMatrix <- cell_selected_reactive()
-      if (!(all(is.na(originalMatrix)))) {
-        filteredMatrix <- originalMatrix[originalMatrix[ , 2] == 1, , 
-                                         drop = FALSE]
+      PlotCoverage(sample = info$value)
+      })
+    
+    #cell_selected_reactive <- eventReactive(input$varTable_cells_selected, {
+      #input$varTable_cells_selected
+    #})
+    
+  })
+  
+  observeEvent(input$varTable_cells_selected, {
+    
+    redrawBlank <- FALSE
+    
+    originalMatrix <- input$varTable_cells_selected
+    
+    #output$text_output <- renderText(previousMtxSize)
+    
+    if (!(all(is.na(originalMatrix)))) {
+      filteredMatrix <- originalMatrix[originalMatrix[ , 2] == 1, , 
+                                       drop = FALSE]
+      
+      if (!(all(is.na(filteredMatrix)))) {
+        # if something is left in the filtered matrix, continue
+        # First adjust the index values in the returned matrix,
+        # because the DT object is 0-indexed, but the data frame is 1-indexed
+        # (add 1 to the column values in the filtered matrix)
         
-        if (!(all(is.na(filteredMatrix)))) {
-          # if something is left in the filtered matrix, continue
-          # First adjust the index values in the returned matrix,
-          # because the DT object is 0-indexed, but the data frame is 1-indexed
-          # (add 1 to the column values in the filtered matrix)
+        currentMtxSize <- nrow(filteredMatrix)
+
+        #output$text_output <- renderText(paste(prev, currentMtxSize, sep = " "))
+        
+        if (previousMtxSize != currentMtxSize) {
+          
           newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
           
-          vcf <- GetVCF(info$value)[newMatrix]
+          vcf <- GetVCF(input$sampleDataTable_cell_clicked$value)[newMatrix]
           
-          PlotCoverage(sample = info$value, positions = as.numeric(vcf))
-          
-        } else {
-          PlotCoverage(sample = info$value)
-        } # end of nested if
+          output$coveragePlot <- renderPlot({
+            PlotCoverage(sample = input$sampleDataTable_cell_clicked$value, 
+                         positions = as.numeric(vcf))
+          })
+        }
+        previousMtxSize <<- as.numeric(currentMtxSize)
         
-      } else {
-        PlotCoverage(sample = info$value)
-      } # end of outermost if
+      } else if (previousMtxSize != 0) {
+        redrawBlank <- TRUE
+        previousMtxSize <<- 0
+      }
+    
+    } else {
+      redrawBlank <- TRUE
+      previousMtxSize <<- 0
+    }
+    
+    if (redrawBlank == TRUE) {
+      output$coveragePlot <- renderPlot({
+        PlotCoverage(sample = input$sampleDataTable_cell_clicked$value)
       })
+    }
+    
   })
+    
 }
 
 # Run the application 

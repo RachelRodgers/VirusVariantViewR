@@ -6,8 +6,14 @@ library("Gviz")
 library("data.table")
 library("tidyverse")
 
-options(shiny.sanitize.errors = FALSE)
+options(shiny.sanitize.errors = FALSE) # need to see the error
 options(ucscChromosomeNames = FALSE) # for Gvis
+
+#----- Global variables -----#
+
+previousMtxSize <- 0 # for determining when to re-paint the coverage plot
+
+genome_size <- 7383 # For calculation/formatting avg. genome coverage
 
 #----- Function Definitions -----#
 
@@ -61,18 +67,17 @@ PlotCoverage <- function(sample, positions = NULL, widths = 1) {
 
 #----- Set up Data Table for App -----#
 
+# Alignment Count Data #
 # Read in sample alignment count data, calculate percent MNV
 readCounts <- read.delim("../alignment_counts.txt")
 readCounts <- readCounts %>%
   mutate("percent_MNV" = round(100*(primary_alignments/total_reads), 
                                digits = 2))
 
+# Genome Coverage Data #
 # Read in genome coverage count data, calculate avg. genome coverage
 rawFiles <- list.files(path = "../sample_data/genome_coverage/", 
                        pattern = "*_coverage.txt")
-
-# Some constants for calculation/formatting avg. genome coverage:
-genome_size <- 7383
 
 # column names determined from documentation at 
 # https://bedtools.readthedocs.io/en/latest/content/tools/genomecov.html
@@ -103,6 +108,7 @@ for (i in 1:length(rawFiles)) {
   
 }
 
+# Merge Data #
 # Add the average genome coverage numbers to the readCounts data
 sampleData <- readCounts %>%
   dplyr::mutate("avg_genome_cov" = genomeCovVec[sample])
@@ -110,7 +116,6 @@ names(sampleData) <- c("Sample", "Total Reads", "Primary Alignments",
                        "% MNV", "Average Coverage")
 sampleData$Sample <- as.character(sampleData$Sample)
 
-previousMtxSize <- 0
 
 #--------------------- Format, Run App ---------------------#
 
@@ -124,12 +129,10 @@ ui <- navbarPage(
   tabPanel(title = "Variants", 
            textInput("varTabInput", "Row ID"),
            DT::DTOutput("varTable"),
-           verbatimTextOutput("text_output"),
            plotOutput("coveragePlot"))
 )
 
 server <- function(input, output, session) {
-  
   
   # columnDefs - hide the 3rd column (number primary alignments) 
   #   which is index 2 in the DT object
@@ -151,20 +154,20 @@ server <- function(input, output, session) {
     
     previousMtxSize <<- 0
     
-    info <- input$sampleDataTable_cell_clicked
+    sampleInfo <- input$sampleDataTable_cell_clicked
     # info$value will return the Sample clicked
     
     # do nothing if not clicked yet, or the clicked cell is not in the 1st col
     #   which is (index 0 for DT object)
-    if (is.null(info$value) || info$col != 0) return()
+    if (is.null(sampleInfo$value) || sampleInfo$col != 0) return()
     
     # otherwise, change the selected tabs on the client
     updateTabsetPanel(session, "navbarPage", selected = "Variants")
     
-    updateTextInput(session, "varTabInput", value = info$value)
+    updateTextInput(session, "varTabInput", value = sampleInfo$value)
     
     output$varTable <- DT::renderDataTable({
-      data = datatable(GetVCF(info$value),
+      data = datatable(GetVCF(sampleInfo$value),
                        selection = list(mode = "multiple", target = "cell"),
                        rownames = FALSE) %>%
         formatStyle(columns = 2, cursor = "pointer")
@@ -172,43 +175,39 @@ server <- function(input, output, session) {
     
     # First renderPlot
     output$coveragePlot <- renderPlot({
-      PlotCoverage(sample = info$value)
+      PlotCoverage(sample = sampleInfo$value)
       })
-    
-    #cell_selected_reactive <- eventReactive(input$varTable_cells_selected, {
-      #input$varTable_cells_selected
-    #})
-    
   })
   
   observeEvent(input$varTable_cells_selected, {
-    
+    # Logical to determine whether to re-paint a blank plot
     redrawBlank <- FALSE
     
     originalMatrix <- input$varTable_cells_selected
-    
-    #output$text_output <- renderText(previousMtxSize)
-    
+
     if (!(all(is.na(originalMatrix)))) {
+      # Select only values that are from the correct column in the variant 
+      #   table ("positions" - col 1)
       filteredMatrix <- originalMatrix[originalMatrix[ , 2] == 1, , 
                                        drop = FALSE]
       
+      # Is anything left in the filteredMatrix?
       if (!(all(is.na(filteredMatrix)))) {
-        # if something is left in the filtered matrix, continue
+        # If something is left in the filtered matrix, continue...
         # First adjust the index values in the returned matrix,
         # because the DT object is 0-indexed, but the data frame is 1-indexed
         # (add 1 to the column values in the filtered matrix)
         
         currentMtxSize <- nrow(filteredMatrix)
 
-        #output$text_output <- renderText(paste(prev, currentMtxSize, sep = " "))
-        
+        # if the current size of filtered matrix is different than before, 
+        #   we need to re-draw the plot with new variants
         if (previousMtxSize != currentMtxSize) {
-          
+          # Adjust the indices
           newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
-          
+          # Pull the data for selected variants from the variant call file
           vcf <- GetVCF(input$sampleDataTable_cell_clicked$value)[newMatrix]
-          
+          # Make the plot with variants identified
           output$coveragePlot <- renderPlot({
             PlotCoverage(sample = input$sampleDataTable_cell_clicked$value, 
                          positions = as.numeric(vcf))
@@ -232,7 +231,7 @@ server <- function(input, output, session) {
       })
     }
     
-  })
+  }) # end of second observeEvent
     
 }
 

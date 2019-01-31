@@ -29,7 +29,7 @@ GetVCF <- function(dataSet, sample) {
 }
 
 PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
-  
+
   # Get the coverage file
   bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/",
                              sample, "_sorted.bedGraph"),

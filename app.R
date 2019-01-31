@@ -1,6 +1,7 @@
 #----- Libraries -----#
 
 library("shiny")
+library("shinythemes")
 library("DT")
 library("Gviz")
 library("data.table")
@@ -14,6 +15,8 @@ options(ucscChromosomeNames = FALSE) # for Gvis
 #--------------------- Format, Run App ---------------------#
 
 ui <- navbarPage(
+  
+  theme = shinytheme("flatly"),
   
   title = "VariantViewR", id = "navbarpage",
   
@@ -37,11 +40,7 @@ ui <- navbarPage(
 )
 
 server <- function(input, output, session) {
-  
-  # need logic here to re-set everything to the beginning when data set is changed
-  # probably need to have a way to compare previous and current action button
-  # values, and when it changes, re-set
-  
+
   hideTab(inputId = "navbarpage", target = "sampleTab")
   hideTab(inputId = "navbarpage", target = "variantTab")
   
@@ -51,6 +50,7 @@ server <- function(input, output, session) {
   observeEvent(input$go, {
     # move to sample table tab:
     showTab(inputId = "navbarpage", target = "sampleTab", select = TRUE)
+    hideTab(inputId = "navbarpage", target = "variantTab")
     # show the name of the currently selected data set:
     output$datasetValue <- renderText(input$dataSetSelect)
     
@@ -68,15 +68,15 @@ server <- function(input, output, session) {
                                                 targets = c(2))))) %>%
         formatStyle(columns = 1, cursor = "pointer") 
     })
-  })
+  }) # end of data set selection
   
   #----- Sample Selection -----#
   
   observeEvent(input$sampleDataTable_cell_clicked, {
-    previousMtxSize <<- 0
+    hideTab(inputId = "navbarpage", target = "variantTab")
     # what's selected?
     sampleInfo <- input$sampleDataTable_cell_clicked
-    output$sampleSelection <- renderPrint(sampleInfo)
+    output$sampleSelection <- renderPrint(dim(sampleInfo))
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
     if (is.null(sampleInfo$value) || sampleInfo$col != 0) return()
@@ -98,17 +98,18 @@ server <- function(input, output, session) {
       PlotCoverage(dataSet = input$dataSetSelect, sample = sampleInfo$value)
     })
     
-  })
+    # global for determining when to re-draw coverage plot
+    previousMtxSize <<- 0
+    
+  }) # end of sample selection observeEvent()
   
-  #----- Coverage Plot Updating -----#
+  #----- Variant Selection -----#
   
   observeEvent(input$varTable_cells_selected, {
     # Logical to determine whether to re-paint a blank plot
     redrawBlank <- FALSE
-    
     # What's selected on the variant table?
     originalMatrix <- input$varTable_cells_selected
-    
     if (!(all(is.na(originalMatrix)))) {
       # Select only values that are from the correct column in the variant 
       #   table ("positions" - col 1)
@@ -151,10 +152,8 @@ server <- function(input, output, session) {
         PlotCoverage(dataSet = input$dataSetSelect,
                      sample = input$sampleDataTable_cell_clicked$value)
       })
-      
     }
-    
-  }) 
+  }) # end of variant selection observeEvent
   
 }
 

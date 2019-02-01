@@ -8,56 +8,7 @@ genome_size <- 7383 # For calculation/formatting avg. genome coverage
 
 #----- Function Definitions -----#
 
-GetVCF <- function(dataSet, sample) {
-  # Read in and format VCF file for selected sample
-  variantSample <- paste0("../", dataSet, "/variants/", sample, "_variants.vcf")
-  
-  vcfFile <- read.delim(variantSample,
-                        comment.char = "#", # ignore VCF header lines
-                        header = FALSE,
-                        colClasses = "character") # suppress conversion of columns
-  vcfHeaders <- c("Refence Genome", "Position", 
-                  "ID", "Reference", "Alternative",
-                  "Quality", "Filter", "Info", "Format", "Values")
-  names(vcfFile) <- vcfHeaders
-  # The last number in Values will be the allelic depth - unfiltered number of 
-  #   reads supporting the reported allele(s)
-  vcfFileFormatted <- vcfFile %>%
-    mutate("Allelic Depth" = map_chr(.x = str_split(Values, pattern = ","),
-                                     .f = tail, n = 1)) %>%
-    select(-c("ID", "Filter", "Info", "Format", "Values"))
-}
-
-PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
-
-  # Get the coverage file
-  bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/",
-                             sample, "_sorted.bedGraph"),
-                      col.names = c("chromosome", "start", "end", "value"))
-  # Generate the top axis track
-  gtrack <- GenomeAxisTrack(fontsize = 20, fontcolor = "black", col = "black")
-  # Generate the coverage track
-  dtrack <- DataTrack(range = bedgraphDT, genome = "ModCR6", 
-                      type = "histogram", name = "Coverage",
-                      background.title = "slategrey", col.histogram = "grey28",
-                      fontsize = 20)
-  
-  # is positions null? 
-  # if yes - plot tracks w/o highlights 
-  # if no - plot tracks with highlights
-  if (is.null(positions)) {
-    coveragePlot <- plotTracks(list(gtrack, dtrack))
-  } else {
-    htrack <- HighlightTrack(trackList = list(dtrack),
-                             start = positions,
-                             width= widths,
-                             inBackground = FALSE,
-                             fill = "#FFE3E6b8")
-    coveragePlot <- plotTracks(list(gtrack, htrack))
-  }
-}
-
-#----- Set up Data Table for App -----#
+#----- Set up Sample Data Table -----#
 
 # Alignment Count Data #
 GenerateAlignmentCounts <- function(dataSet) {
@@ -116,6 +67,68 @@ GenerateAlignmentCounts <- function(dataSet) {
 }
 
 
+#----- Generate Sample Variant Table -----#
 
+GetVCF <- function(dataSet, sample) {
+  # Read in and format VCF file for selected sample
+  variantSample <- paste0("../", dataSet, "/variants/", sample, "_variants.vcf")
+  
+  vcfFile <- read.delim(variantSample,
+                        comment.char = "#", # ignore VCF header lines
+                        header = FALSE,
+                        colClasses = "character") # suppress conversion of columns
+  vcfHeaders <- c("Refence Genome", "Position", 
+                  "ID", "Reference", "Alternative",
+                  "Quality", "Filter", "Info", "Format", "Values")
+  names(vcfFile) <- vcfHeaders
+  
+  # Get the primary alignment value from the current sample's alignment counts
+  sampleAlignmentCounts <- GenerateAlignmentCounts(dataSet)
+  samplePrimaryAlignments <- subset(sampleAlignmentCounts,
+                                    Sample == sample)$`Primary Alignments`
+  # Filter sampleAlignmentCounts by sample
+  #samplePrimaryAlignments <- subset(GenerateAlignmentCounts,
+                                    #sample == sample)$primary_alignments
+  
+  # The last number in Values will be the allelic depth - unfiltered number of 
+  #   reads supporting the reported allele(s)
+  vcfFileFormatted <- vcfFile %>%
+    mutate("Allelic Depth" = map_chr(.x = str_split(Values, pattern = ","),
+                                     .f = tail, n = 1),
+           "Allelic Frequency" = round((100 * 
+                                         as.numeric(`Allelic Depth`)/samplePrimaryAlignments),
+                                       digits = 2)) %>%
+    select(-c("ID", "Filter", "Info", "Format", "Values"))
+}
 
+#----- Generate Coverage Plot for Sample & Variants -----#
+
+PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
+
+  # Get the coverage file
+  bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/",
+                             sample, "_sorted.bedGraph"),
+                      col.names = c("chromosome", "start", "end", "value"))
+  # Generate the top axis track
+  gtrack <- GenomeAxisTrack(fontsize = 20, fontcolor = "black", col = "black")
+  # Generate the coverage track
+  dtrack <- DataTrack(range = bedgraphDT, genome = "ModCR6", 
+                      type = "histogram", name = "Coverage",
+                      background.title = "slategrey", col.histogram = "grey28",
+                      fontsize = 20)
+  
+  # is positions null? 
+  # if yes - plot tracks w/o highlights 
+  # if no - plot tracks with highlights
+  if (is.null(positions)) {
+    coveragePlot <- plotTracks(list(gtrack, dtrack))
+  } else {
+    htrack <- HighlightTrack(trackList = list(dtrack),
+                             start = positions,
+                             width= widths,
+                             inBackground = FALSE,
+                             fill = "#FFE3E6b8")
+    coveragePlot <- plotTracks(list(gtrack, htrack))
+  }
+}
 

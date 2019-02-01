@@ -2,6 +2,7 @@
 
 library("shiny")
 library("shinythemes")
+library("shinyjs")
 library("DT")
 library("Gviz")
 library("data.table")
@@ -14,30 +15,35 @@ options(ucscChromosomeNames = FALSE) # for Gvis
 
 #--------------------- Format, Run App ---------------------#
 
-ui <- navbarPage(
+ui <- tagList(
   
-  theme = shinytheme("flatly"),
+  useShinyjs(),
   
-  title = "VariantViewR", id = "navbarpage",
-  
-  tabPanel(title = "Data Set Selection",
+  navbarPage(
+    
+    theme = shinytheme("flatly"),
+    title = "VariantViewR", id = "navbarpage",
+    
+    tabPanel(title = "Data Set Selection",
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
                        choices = c("baldridge_rumspringa", "craig_mnv")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
-  
-  tabPanel(title = "Sample Table", value = "sampleTab",
+    
+    tabPanel(title = "Sample Table", value = "sampleTab",
            DT::dataTableOutput(outputId = "sampleDataTable"),
+           actionButton(inputId = "showVariants", label = "Show Variants"),
            verbatimTextOutput("datasetValue"),
            verbatimTextOutput("sampleSelection")),
-  
-  tabPanel(title = "Variants", value = "variantTab",
+    
+    tabPanel(title = "Variants", value = "variantTab",
            textInput(inputId = "varTabInput", label = "Current Sample:"),
            DT::DTOutput(outputId = "varTable"),
            plotOutput(outputId = "coveragePlot"))
-  
+  )
 )
+
 
 server <- function(input, output, session) {
 
@@ -73,13 +79,18 @@ server <- function(input, output, session) {
   #----- Sample Selection -----#
   
   observeEvent(input$sampleDataTable_cell_clicked, {
-    hideTab(inputId = "navbarpage", target = "variantTab")
     # what's selected?
     sampleInfo <- input$sampleDataTable_cell_clicked
     output$sampleSelection <- renderPrint(dim(sampleInfo))
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
-    if (is.null(sampleInfo$value) || sampleInfo$col != 0) return()
+    if (is.null(sampleInfo$value) || sampleInfo$col != 0) {
+      shinyjs::disable("showVariants")
+      return()
+      } else {
+        shinyjs::enable("showVariants")
+    }
+    
     # otherwise, show variantTab:
     showTab(inputId = "navbarpage", target = "variantTab", select = TRUE)
     

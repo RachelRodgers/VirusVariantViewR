@@ -35,7 +35,8 @@ ui <- tagList(
            DT::dataTableOutput(outputId = "sampleDataTable"),
            actionButton(inputId = "showVariants", label = "Show Variants"),
            verbatimTextOutput("datasetValue"),
-           verbatimTextOutput("sampleSelection")),
+           verbatimTextOutput("sampleSelection"),
+           verbatimTextOutput("filteredMatrix")),
     
     tabPanel(title = "Variants", value = "variantTab",
            textInput(inputId = "varTabInput", label = "Current Sample:"),
@@ -67,9 +68,10 @@ server <- function(input, output, session) {
     #   which is index 2 in the DT object
     # formatStyle - add CSS style 'cursor: pointer' to the 1st column (i.e. sample)
     #   which is index 1 in in the DT object
+    # Table set up to allow multiple cell selections
     output$sampleDataTable <- DT::renderDataTable({
       data = datatable(sampleData, 
-                       selection = list(mode = "single", target = "cell"), 
+                       selection = list(mode = "multiple", target = "cell"), 
                        rownames = FALSE,
                        options = list(
                          columnDefs = list(list(visible = FALSE, 
@@ -80,28 +82,42 @@ server <- function(input, output, session) {
   
   #----- Sample Selection -----#
   
+  # similar to variant table, filter out incorrect cells.  as long as something
+  #   correct is selected, the show variants button should be active, but
+  #   if empty or only holds incorrect cells it should be inactive
+
+  SelectedSamples <- eventReactive(input$sampleDataTable_cells_selected, {
+    sampleMtxOriginal <- input$sampleDataTable_cells_selected
+    sampleMtxFiltered <- NULL
+    # if sampleMtxOriginal is not empty, filter out incorrect cells
+    if (!(all(is.na(sampleMtxOriginal)))) {
+      sampleMtxFiltered <- sampleMtxOriginal[sampleMtxOriginal[, 2] == 0, ,
+                                             drop = FALSE]
+      
+    }
+    return(sampleMtxFiltered)
+  })
+  
   observeEvent(input$sampleDataTable_cell_clicked, {
     # what's selected?
-    sampleInfo <- input$sampleDataTable_cell_clicked
-    output$datasetValue <- renderPrint(sampleInfo)
+    # current cell:
+    output$datasetValue <- renderPrint(input$sampleDataTable_cell_clicked)
+    # current unfiltered Matrix
+    output$sampleSelection <- renderPrint(input$sampleDataTable_cells_selected)
+    # current filtered Matrix
+    output$filteredMatrix <- renderPrint(SelectedSamples())
+    
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
-    observeEvent(input$sampleDataTable_cells_selected, {
-      cellsSelected <- input$sampleDataTable_cells_selected
-      output$sampleSelection <- renderPrint(cellsSelected)
-      if (all(is.na(input$sampleDataTable_cells_selected)) || 
-          is.null(sampleInfo$value) || sampleInfo$col != 0) {
-        # disable the button and re-hide the variant tab
-        shinyjs::disable("showVariants")
-        hideTab(inputId = "navbarpage", target = "variantTab")
-        return()
-      } else {
-        shinyjs::enable("showVariants")
+    if (!(all(is.na(SelectedSamples())))) {
+      shinyjs::enable("showVariants")
+    } else {
+      shinyjs::disable("showVariants")
+      hideTab(inputId = "navbarpage", target = "variantTab")
+      return()
       }
     })
-    
-  })
-    
+  
   # click the button:
   observeEvent(input$showVariants, {
     # make the variant tab visible & switch to it

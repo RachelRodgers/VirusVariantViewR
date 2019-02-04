@@ -114,7 +114,8 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
   # Generate the coverage track
   dtrack <- DataTrack(range = bedgraphDT, genome = "ModCR6", 
                       type = "histogram", name = "Coverage",
-                      background.title = "slategrey", col.histogram = "grey28",
+                      background.title = "#2C3E50", col.histogram = "grey28",
+                      # hex code matches flatly top bar, previously "slategrey"
                       fontsize = 20)
   
   # is positions null? 

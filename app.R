@@ -58,7 +58,7 @@ server <- function(input, output, session) {
     showTab(inputId = "navbarpage", target = "sampleTab", select = TRUE)
     hideTab(inputId = "navbarpage", target = "variantTab")
     # show the name of the currently selected data set:
-    output$datasetValue <- renderText(input$dataSetSelect)
+    #output$datasetValue <- renderText(input$dataSetSelect)
     
     # get the correct data set information to display:
     sampleData <- GenerateAlignmentCounts(dataSet = input$dataSetSelect)
@@ -68,7 +68,9 @@ server <- function(input, output, session) {
     # formatStyle - add CSS style 'cursor: pointer' to the 1st column (i.e. sample)
     #   which is index 1 in in the DT object
     output$sampleDataTable <- DT::renderDataTable({
-      data = datatable(sampleData, selection = "single", rownames = FALSE,
+      data = datatable(sampleData, 
+                       selection = list(mode = "single", target = "cell"), 
+                       rownames = FALSE,
                        options = list(
                          columnDefs = list(list(visible = FALSE, 
                                                 targets = c(2))))) %>%
@@ -81,39 +83,51 @@ server <- function(input, output, session) {
   observeEvent(input$sampleDataTable_cell_clicked, {
     # what's selected?
     sampleInfo <- input$sampleDataTable_cell_clicked
-    output$sampleSelection <- renderPrint(dim(sampleInfo))
+    output$datasetValue <- renderPrint(sampleInfo)
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
-    if (is.null(sampleInfo$value) || sampleInfo$col != 0) {
-      shinyjs::disable("showVariants")
-      return()
+    observeEvent(input$sampleDataTable_cells_selected, {
+      cellsSelected <- input$sampleDataTable_cells_selected
+      output$sampleSelection <- renderPrint(cellsSelected)
+      if (all(is.na(input$sampleDataTable_cells_selected)) || 
+          is.null(sampleInfo$value) || sampleInfo$col != 0) {
+        # disable the button and re-hide the variant tab
+        shinyjs::disable("showVariants")
+        hideTab(inputId = "navbarpage", target = "variantTab")
+        return()
       } else {
         shinyjs::enable("showVariants")
-    }
+      }
+    })
     
-    # otherwise, show variantTab:
+  })
+    
+  # click the button:
+  observeEvent(input$showVariants, {
+    # make the variant tab visible & switch to it
     showTab(inputId = "navbarpage", target = "variantTab", select = TRUE)
-    
+    sampleInfo <- input$sampleDataTable_cell_clicked
     updateTextInput(session, inputId = "varTabInput", value = sampleInfo$value)
     
+    # render the variant table:
     output$varTable <- DT::renderDataTable({
       data = datatable(GetVCF(dataSet = input$dataSetSelect,
                               sample = sampleInfo$value),
                        selection = list(mode = "multiple", target = "cell"),
+                       options = list(pageLength = 5),
                        rownames = FALSE) %>%
         formatStyle(columns = 2, cursor = "pointer")
     })
     
-    # First renderPlot
+    # First renderPlot (no tracks)
     output$coveragePlot <- renderPlot({
       PlotCoverage(dataSet = input$dataSetSelect, sample = sampleInfo$value)
     })
-    
+
     # global for determining when to re-draw coverage plot
     previousMtxSize <<- 0
-    
-  }) # end of sample selection observeEvent()
-  
+  }) # end of sample selection observeEvent
+
   #----- Variant Selection -----#
   
   observeEvent(input$varTable_cells_selected, {

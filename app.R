@@ -40,8 +40,11 @@ ui <- tagList(
     
     tabPanel(title = "Variants", value = "variantTab",
            textInput(inputId = "varTabInput", label = "Current Sample:"),
-           DT::DTOutput(outputId = "varTable"),
-           plotOutput(outputId = "coveragePlot"))
+           uiOutput(outputId = "variantTables"),
+           uiOutput(outputId = "coveragePlots"))#,
+           #div(id = "placeholder"))#,
+           #DT::DTOutput(outputId = "varTable"),
+           #plotOutput(outputId = "coveragePlot"))
   )
 )
 
@@ -49,6 +52,7 @@ ui <- tagList(
 server <- function(input, output, session) {
 
   hideTab(inputId = "navbarpage", target = "sampleTab")
+  sampleVec <- vector(mode = "character")
   hideTab(inputId = "navbarpage", target = "variantTab")
   
   #----- Data Set Selection -----#
@@ -57,6 +61,7 @@ server <- function(input, output, session) {
   observeEvent(input$go, {
     # move to sample table tab:
     showTab(inputId = "navbarpage", target = "sampleTab", select = TRUE)
+    sampleVec <<- vector(mode = "character")
     hideTab(inputId = "navbarpage", target = "variantTab")
     # show the name of the currently selected data set:
     #output$datasetValue <- renderText(input$dataSetSelect)
@@ -82,120 +87,116 @@ server <- function(input, output, session) {
   
   #----- Sample Selection -----#
   
-  # similar to variant table, filter out incorrect cells.  as long as something
-  #   correct is selected, the show variants button should be active, but
-  #   if empty or only holds incorrect cells it should be inactive
+  # Select one or more samples, store the sample names in a chr vector.
 
-  SelectedSamples <- eventReactive(input$sampleDataTable_cells_selected, {
+  GetSampleVec <- eventReactive(input$sampleDataTable_cell_clicked, {
+    currentCell <- input$sampleDataTable_cell_clicked
+    currentCellCol <- currentCell$col
+    if (currentCellCol == 0) {
+      currentSample <- currentCell$value
+      if (!(currentSample %in% sampleVec)) {
+        sampleVec <<- c(sampleVec, currentSample)
+      } else { # remove sample
+        sampleVec <<- sampleVec[sampleVec != currentSample]
+      }
+    }
+    return(sampleVec)
+  }, ignoreNULL = FALSE)
+  
+  # show value of sample vector in the sample table tab
+  #observe({
+   # output$filteredMatrix <- renderPrint(GetSampleVec())
+    #})
+  
+  # determine when to enable/disable the "Show Variants" button
+  SelectedSampleIndices <- eventReactive(input$sampleDataTable_cell_clicked, {
     sampleMtxOriginal <- input$sampleDataTable_cells_selected
     sampleMtxFiltered <- NULL
     # if sampleMtxOriginal is not empty, filter out incorrect cells
     if (!(all(is.na(sampleMtxOriginal)))) {
       sampleMtxFiltered <- sampleMtxOriginal[sampleMtxOriginal[, 2] == 0, ,
                                              drop = FALSE]
-      
     }
     return(sampleMtxFiltered)
   })
   
+  # enables/disables the Show Variants button:
   observeEvent(input$sampleDataTable_cell_clicked, {
-    # what's selected?
-    # current cell:
-    output$datasetValue <- renderPrint(input$sampleDataTable_cell_clicked)
-    # current unfiltered Matrix
-    output$sampleSelection <- renderPrint(input$sampleDataTable_cells_selected)
-    # current filtered Matrix
-    output$filteredMatrix <- renderPrint(SelectedSamples())
-    
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
-    if (!(all(is.na(SelectedSamples())))) {
-      shinyjs::enable("showVariants")
-    } else {
+    if (is.null(SelectedSampleIndices()) | all(is.na(SelectedSampleIndices()))) {
       shinyjs::disable("showVariants")
-      hideTab(inputId = "navbarpage", target = "variantTab")
+      hideTab(inputId = "navbarPage", target = "variantTab")
       return()
-      }
-    })
+      } else {
+          shinyjs::enable("showVariants")
+        }
+  })
+  
+  observeEvent(input$sampleDataTable_cell_clicked, {
+    # what's selected?
+    # last clicked cell:
+    output$datasetValue <- renderPrint(input$sampleDataTable_cell_clicked)
+    # current filtered Matrix
+    output$sampleSelection <- renderPrint(SelectedSampleIndices())
+    # current filtered Matrix
+    #output$filteredMatrix <- renderPrint(GetSampleVec())
+    
+  })
+  
+  
+  #----- View Variants -----#  
   
   # click the button:
   observeEvent(input$showVariants, {
     # make the variant tab visible & switch to it
     showTab(inputId = "navbarpage", target = "variantTab", select = TRUE)
-    sampleInfo <- input$sampleDataTable_cell_clicked
-    updateTextInput(session, inputId = "varTabInput", value = sampleInfo$value)
+    #sampleInfo <- input$sampleDataTable_cell_clicked
+    #updateTextInput(session, inputId = "varTabInput", value = sampleInfo$value)
+    updateTextInput(session, inputId = "varTabInput", value = GetSampleVec())
     
-    # render the variant table:
-    output$varTable <- DT::renderDataTable({
-      data = datatable(GetVCF(dataSet = input$dataSetSelect,
-                              sample = sampleInfo$value),
-                       selection = list(mode = "multiple", target = "cell"),
-                       options = list(pageLength = 5),
-                       rownames = FALSE) %>%
-        formatStyle(columns = 2, cursor = "pointer")
+    output$variantTables <- renderUI({
+      allVariantData <- map(isolate(GetSampleVec()), GetVCF, 
+                            dataSet = input$dataSetSelect)
+      allVariantPlots <- map(allVariantData, function(x) {
+        DT::renderDataTable(expr = 
+                              (data = datatable(x,
+                                                selection = list(mode = "multiple", 
+                                                                 target = "cell"),
+                                                options = list(pageLength = 5), 
+                                                rownames = FALSE)) %>%
+                              formatStyle(columns = 2, cursor = "pointer"))
+        })
     })
+
+  })
     
     # First renderPlot (no tracks)
-    output$coveragePlot <- renderPlot({
-      PlotCoverage(dataSet = input$dataSetSelect, sample = sampleInfo$value)
-    })
+    #output$coveragePlot <- renderPlot({
+      #PlotCoverage(dataSet = input$dataSetSelect, sample = sampleInfo$value)
+    #})
 
     # global for determining when to re-draw coverage plot
-    previousMtxSize <<- 0
-  }) # end of sample selection observeEvent
+    #previousMtxSize <<- 0
+  #}) # end of sample selection observeEvent
 
-  #----- Variant Selection -----#
-  
-  observeEvent(input$varTable_cells_selected, {
-    # Logical to determine whether to re-paint a blank plot
-    redrawBlank <- FALSE
-    # What's selected on the variant table?
-    originalMatrix <- input$varTable_cells_selected
-    if (!(all(is.na(originalMatrix)))) {
-      # Select only values that are from the correct column in the variant 
-      #   table ("positions" - col 1)
-      filteredMatrix <- originalMatrix[originalMatrix[ , 2] == 1, , 
-                                       drop = FALSE]
-      # Is anything left in the filteredMatrix?
-      if (!(all(is.na(filteredMatrix)))) {
-        # If something is left in the filtered matrix, continue...
-        # First adjust the index values in the returned matrix,
-        # because the DT object is 0-indexed, but the data frame is 1-indexed
-        # (add 1 to the column values in the filtered matrix)
-        currentMtxSize <- nrow(filteredMatrix)
-        # if the current size of filtered matrix is different than before, 
-        #   we need to re-draw the plot with new variants
-        if (previousMtxSize != currentMtxSize) {
-          # Adjust the indices
-          newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
-          # Pull the data for selected variants from the variant call file
-          vcf <- GetVCF(dataSet = input$dataSetSelect,
-                        sample = input$sampleDataTable_cell_clicked$value)[newMatrix]
-          # Make the plot with variants identified
-          output$coveragePlot <- renderPlot({
-            PlotCoverage(dataSet = input$dataSetSelect,
-                         sample = input$sampleDataTable_cell_clicked$value, 
-                         positions = as.numeric(vcf))
-          })
-        }
-        previousMtxSize <<- as.numeric(currentMtxSize)
-        
-      } else if (previousMtxSize != 0) {
-        redrawBlank <- TRUE
-        previousMtxSize <<- 0
-      }
-    } else {
-      redrawBlank <- TRUE
-      previousMtxSize <<- 0
-    }
-    if (redrawBlank == TRUE) {
-      output$coveragePlot <- renderPlot({
-        PlotCoverage(dataSet = input$dataSetSelect,
-                     sample = input$sampleDataTable_cell_clicked$value)
-      })
-    }
-  }) # end of variant selection observeEvent
   
 }
 
 shinyApp(ui = ui, server = server)
+
+
+
+# test loop
+testVector <- c("Baldridge_10", "Baldridge_11")
+listOfTracks <- map(testVector, PlotCoverage, dataSet = "baldridge_rumspringa")
+
+testFunction <- function(track_list) {
+  for (i in 1:length(track_list)) {
+    plotTracks(trackList = list(track_list[[i]][[1]],
+                                track_list[[i]][[2]]))
+  }
+}
+
+plotTest <- testFunction(listOfTracks)
+

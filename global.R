@@ -122,18 +122,18 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
   # if yes - plot tracks w/o highlights 
   # if no - plot tracks with highlights
   if (is.null(positions)) {
-    #coveragePlot <- plotTracks(list(gtrack, dtrack))
-    trackList <- list("gtrack" = gtrack, "dtrack" = dtrack)
-    return(trackList)
+    coveragePlot <- plotTracks(list(gtrack, dtrack))
+    #trackList <- list("gtrack" = gtrack, "dtrack" = dtrack)
+    return(coveragePlot)
   } else {
     htrack <- HighlightTrack(trackList = list(dtrack),
                              start = positions,
                              width= widths,
                              inBackground = FALSE,
                              fill = "#FFE3E6b8")
-    #coveragePlot <- plotTracks(list(gtrack, htrack))
-    trackList <- list("gtrack" = gtrack, "htrack" = htrack)
-    return(trackList)
+    coveragePlot <- plotTracks(list(gtrack, htrack))
+    #trackList <- list("gtrack" = gtrack, "htrack" = htrack)
+    return(coveragePlot)
   }
 }
 

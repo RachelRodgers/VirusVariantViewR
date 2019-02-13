@@ -27,7 +27,7 @@ ui <- tagList(
     tabPanel(title = "Data Set Selection",
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
-                       choices = c("baldridge_rumspringa", "craig_mnv")),
+                       choices = c("craig_mnv", "baldridge_rumspringa")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     
@@ -158,7 +158,7 @@ server <- function(input, output, session) {
     output$variantTables <- renderUI({
       allVariantData <- map(isolate(GetSampleVec()), GetVCF, 
                             dataSet = input$dataSetSelect)
-      allVariantPlots <- map(allVariantData, function(x) {
+      allVariantTables <- map(allVariantData, function(x) {
         DT::renderDataTable(expr = 
                               (data = datatable(x,
                                                 selection = list(mode = "multiple", 
@@ -168,8 +168,15 @@ server <- function(input, output, session) {
                               formatStyle(columns = 2, cursor = "pointer"))
         })
     })
+    
+    output$coveragePlots <- renderUI({
+      allCoveragData <- map(GetSampleVec(), function(y) {
+        renderPlot({PlotCoverage(dataSet = input$dataSetSelect, sample = y)})
+      })
 
   })
+  })
+  
     
     # First renderPlot (no tracks)
     #output$coveragePlot <- renderPlot({
@@ -188,15 +195,15 @@ shinyApp(ui = ui, server = server)
 
 
 # test loop
-testVector <- c("Baldridge_10", "Baldridge_11")
-listOfTracks <- map(testVector, PlotCoverage, dataSet = "baldridge_rumspringa")
+#testVector <- c("Baldridge_1", "Baldridge_2")
+#listOfTracks <- map(testVector, PlotCoverage, dataSet = "craig_mnv")
 
-testFunction <- function(track_list) {
-  for (i in 1:length(track_list)) {
-    plotTracks(trackList = list(track_list[[i]][[1]],
-                                track_list[[i]][[2]]))
-  }
-}
+#testFunction <- function(track_list) {
+#  for (i in 1:length(track_list)) {
+#    plotTracks(trackList = list(track_list[[i]][[1]],
+#                                track_list[[i]][[2]]))
+#  }
+#}
 
-plotTest <- testFunction(listOfTracks)
+#plotTest <- testFunction(listOfTracks)
 

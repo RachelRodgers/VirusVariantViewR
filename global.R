@@ -99,6 +99,11 @@ GetVCF <- function(dataSet, sample) {
                                          as.numeric(`Allelic Depth`)/samplePrimaryAlignments),
                                        digits = 2)) %>%
     select(-c("ID", "Filter", "Info", "Format", "Values"))
+  
+  comment(vcfFileFormatted) <- sample
+  
+  return(vcfFileFormatted)
+  
 }
 
 #----- Generate Coverage Plot for Sample & Variants -----#
@@ -113,10 +118,10 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
   gtrack <- GenomeAxisTrack(fontsize = 20, fontcolor = "black", col = "black")
   # Generate the coverage track
   dtrack <- DataTrack(range = bedgraphDT, genome = "ModCR6", 
-                      type = "histogram", name = "Coverage",
+                      type = "histogram", name = sample,
                       background.title = "#2C3E50", col.histogram = "grey28",
                       # hex code matches flatly top bar, previously "slategrey"
-                      fontsize = 20)
+                      fontsize = 14)
   
   # is positions null? 
   # if yes - plot tracks w/o highlights 

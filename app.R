@@ -33,9 +33,12 @@ ui <- tagList(
     
     tabPanel(title = "Sample Table", value = "sampleTab",
            DT::dataTableOutput(outputId = "sampleDataTable"),
-           actionButton(inputId = "inspVariants", label = "Inspect Variants"),
-           p(), # get em off his back
-           actionButton(inputId = "stackCoverage", label = "Stack Coverage"),
+           actionButton(inputId = "inspVariants", 
+                        label = "Inspect Variants",
+                        icon("fas fa-search")),
+           span(actionButton(inputId = "stackCoverage", label = "Stack Coverage",
+                             style = "margin-left: 10px;",
+                             icon("fas fa-stream"))),
            h6("GetSampleVec()"),
            p(verbatimTextOutput("verbatimOutput1")),
            h6("_cells_selected()"),
@@ -45,7 +48,7 @@ ui <- tagList(
     
     tabPanel(title = "Coverage", value = "coverageTab",
            textInput(inputId = "coverageTabInput", label = "Current Sample:"),
-           h4("Display Options:"),
+           h4(strong("Display Options:")),
            checkboxInput(inputId = "showVarTables", 
                          label = "Show Variant Tables",
                          value = FALSE),
@@ -53,6 +56,10 @@ ui <- tagList(
                          label = "Show Coverage Plots",
                          value = TRUE),
            uiOutput(outputId = "dynamicVarTables"),
+           #hr(style = "border-top: 3px solid #2C3E50; margin-top: 100px; margin-bottom: 100px;"),
+           #hr(style = "border: 0; height: 1px; background: #2C3E50; 
+              #background-image: linear-gradient(to right, #ccc, #2C3E50, #ccc);
+              #margin-top: 100px; margin-bottom: 100px;"),
            uiOutput(outputId = "dynamicCovPlots")),
     
     tabPanel(title = "Variants", value = "variantTab",
@@ -215,11 +222,12 @@ server <- function(input, output, session) {
                             dataSet = input$dataSetSelect)
       
       allVariantTables <- map(allVariantData, function(x) {
-        p(DT::renderDataTable(expr =
+        p(h4(strong(comment(x)), style = "text-align: center;"),
+          DT::renderDataTable(expr =
                               (data = datatable(x,
-                                                caption = htmltools::tags$caption(
-                                                  style = 'caption-side: top; text-align: center; color:black;',
-                                                  htmltools::strong(comment(x))),
+                                                #caption = htmltools::tags$caption(
+                                                  #style = 'caption-side: top; text-align: center; color:black;',
+                                                  #htmltools::strong(comment(x))),
                                                 selection = list(mode = "multiple",
                                                                  target = "cell"),
                                                 options = list(bLengthChange = 0,
@@ -233,8 +241,9 @@ server <- function(input, output, session) {
     # Dynamic Coverage Plots:
     output$dynamicCovPlots <- renderUI({
       allCoveragData <- map(GetSampleVec(), function(y) {
-        p(renderPlot({PlotCoverage(dataSet = input$dataSetSelect, sample = y)},
-                   height = 250))
+        p(h4(strong(y), style = "text-align: center;"), 
+          renderPlot({PlotCoverage(dataSet = input$dataSetSelect, sample = y)},
+                     height = 250), style = "margin-top: 30 px;")
         })
       })
     

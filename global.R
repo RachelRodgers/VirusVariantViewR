@@ -118,10 +118,10 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
   gtrack <- GenomeAxisTrack(fontsize = 20, fontcolor = "black", col = "black")
   # Generate the coverage track
   dtrack <- DataTrack(range = bedgraphDT, genome = "ModCR6", 
-                      type = "histogram", name = sample,
+                      type = "histogram", name = " ",
                       background.title = "#2C3E50", col.histogram = "grey28",
                       # hex code matches flatly top bar, previously "slategrey"
-                      fontsize = 14)
+                      fontsize = 18)
   
   # is positions null? 
   # if yes - plot tracks w/o highlights 

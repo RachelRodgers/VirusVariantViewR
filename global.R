@@ -73,10 +73,26 @@ GetVCF <- function(dataSet, sample) {
   # Read in and format VCF file for selected sample
   variantSample <- paste0("../", dataSet, "/variants/", sample, "_variants.vcf")
   
-  vcfFile <- read.delim(variantSample,
-                        comment.char = "#", # ignore VCF header lines
-                        header = FALSE,
-                        colClasses = "character") # suppress conversion of columns
+  vcfFile <- tryCatch({ # in case there are no variants in the VCF file
+      read.delim(variantSample,
+                 comment.char = "#", # ignore VCF header lines
+                 header = FALSE,
+                 colClasses = "character") # suppress conversion of columns
+    },
+    error = function(e) {
+      # return an empty data frame
+      data.frame("Refence Genome" = character(0), 
+                 "Position" = character(0), 
+                 "ID" = character(0), 
+                 "Reference" = character(0), 
+                 "Alternative" = character(0),
+                 "Quality"= character(0), 
+                 "Filter" = character(0), 
+                 "Info" = character(0), 
+                 "Format" = character(0), 
+                 "Values" = character(0))
+    })
+  
   vcfHeaders <- c("Refence Genome", "Position", 
                   "ID", "Reference", "Alternative",
                   "Quality", "Filter", "Info", "Format", "Values")
@@ -89,15 +105,24 @@ GetVCF <- function(dataSet, sample) {
   # Filter sampleAlignmentCounts by sample
   #samplePrimaryAlignments <- subset(GenerateAlignmentCounts,
                                     #sample == sample)$primary_alignments
-  
+
+  # The raw read depth at each position will be given by DP=xx; the first element
+  #   in the INFO field.  Will divide the allelic depth by this value to get
+  #   the allelic frequency.
   # The last number in Values will be the allelic depth - unfiltered number of 
   #   reads supporting the reported allele(s)
+  
   vcfFileFormatted <- vcfFile %>%
     mutate("Allelic Depth" = map_chr(.x = str_split(Values, pattern = ","),
                                      .f = tail, n = 1),
-           "Allelic Frequency" = round((100 * 
-                                         as.numeric(`Allelic Depth`)/samplePrimaryAlignments),
-                                       digits = 2)) %>%
+           "Total Depth" = map_chr(.x = str_split(Info, pattern = ";"),
+                                   .f = function(x) {
+                                     depthStr <- head(x, 1)
+                                     stringr::str_remove(depthStr, "DP=")} ),
+           # Allelic Freq = (allelic depth/raw depth) * 100%
+           "Allelic Frequency" = 
+             round((100 * as.numeric(`Allelic Depth`)/as.numeric(`Total Depth`)), 
+                                           digits = 2)) %>%
     select(-c("ID", "Filter", "Info", "Format", "Values"))
   
   comment(vcfFileFormatted) <- sample

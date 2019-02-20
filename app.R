@@ -27,7 +27,8 @@ ui <- tagList(
     tabPanel(title = "Data Set Selection",
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
-                       choices = c("baldridge_rumspringa", "craig_mnv")),
+                       choices = c("baldridge_rumspringa", "craig_mnv",
+                                   "larry_mnv_190213")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     
@@ -300,13 +301,14 @@ server <- function(input, output, session) {
         if (previousMtxSize != currentMtxSize) {
           # Adjust the indices
           newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
+          currentSampleValue <- input$sampleDataTable_cell_clicked$value
           # Pull the data for selected variants from the variant call file
           vcf <- GetVCF(dataSet = input$dataSetSelect,
-                        sample = input$sampleDataTable_cell_clicked$value)[newMatrix]
+                        sample = GetSampleVec())[newMatrix]
           # Make the plot with variants identified
           output$variantTabCoveragePlot <- renderPlot({
             PlotCoverage(dataSet = input$dataSetSelect,
-                         sample = input$sampleDataTable_cell_clicked$value, 
+                         sample = GetSampleVec(), 
                          positions = as.numeric(vcf))
           })
         }
@@ -323,7 +325,7 @@ server <- function(input, output, session) {
     if (redrawBlank == TRUE) {
       output$variantTabCoveragePlot <- renderPlot({
         PlotCoverage(dataSet = input$dataSetSelect,
-                     sample = input$sampleDataTable_cell_clicked$value)
+                     sample = GetSampleVec())
       })
     }
   }) # end of variant selection observeEvent

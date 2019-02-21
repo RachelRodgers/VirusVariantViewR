@@ -90,9 +90,14 @@ server <- function(input, output, session) {
     # clear the vector that will hold user-selected samples for coverage disaplay:
     sampleVec <<- vector(mode = "character")
     
-    #----- Display Sample Data Table -----#
+    #----- Generate Sample Data List for Common Variant Calling -----#
+    # This is SO SLOW, there must be a better place to do it #
+    sampleData <- GenerateSampleData(dataSet = input$dataSetSelect)
     
-    sampleData <- GenerateAlignmentCounts(dataSet = input$dataSetSelect)
+    currentSampleObjects <- BuildSampleObjects(dataSet = input$dataSetSelect,
+                                               sampleDataTable = sampleData)
+      
+    #----- Display Sample Data Table -----#
     
     # columnDefs - hide the 3rd column (index 2) (number primary alignments)
     # formatStyle - add CSS style 'cursor: pointer' to the 1st column (i.e. sample)

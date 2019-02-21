@@ -6,12 +6,85 @@ previousMtxSize <- 0 # for determining when to re-paint the coverage plot
 
 genome_size <- 7383 # For calculation/formatting avg. genome coverage
 
+#----- Class Definitions -----#
+
+# These classes are populated when the data set is selected
+
+setClass("Sample",
+         representation = representation(sample_name = "character",
+                                         variant_list = "list"),
+         prototype = prototype(sample_name = NA_character_,
+                               variant_list = list()))
+
+setClass("Variant",
+         representation = representation(parent_sample = "character",
+                                         position = "numeric",
+                                         ref_allele = "character",
+                                         alt_allele = "character"),
+         prototype = prototype(parent_sample = NA_character_,
+                               position = NA_real_,
+                               ref_allele = NA_character_,
+                               alt_allele = NA_character_))
+
 #----- Function Definitions -----#
+
+#----- Populating the Sample and Variant Objects -----#
+
+# Returns a list of Sample objects, each of which contains a list of
+#   Variant objects.
+#dataSetSelect <- "baldridge_rumspringa"
+#testDataSet <- GenerateSampleData(dataSetSelect) # used to make dataSetSamples
+#dataSetSamples <- as.character(testDataSet$Sample) # send to sampleVector
+
+BuildSampleObjects <- function(dataSet, sampleDataTable) {
+  # dataSet will come from input$dataSetSelect
+  # sampleDataTable will come from 
+  #   sampleData <- GenerateSampleData(dataSet = input$dataSetSelect)
+  sampleVector <- as.character(sampleDataTable$Sample)
+  sampleClassList <- list()
+  # Build a Sample class object from the vector
+  for (i in 1:length(sampleVector)) {
+    currentSample <- sampleVector[i]
+    # populate a Variant class object
+    currentVCFFile <- GetVCF(dataSet, sample = currentSample)
+    # Stop here if nothing is in the sample
+    if (nrow(currentVCFFile) == 0) {
+      warning("At least one selected sample has no variants detected. No common variants among all samples.",
+              call. = FALSE)
+      newSample <- new("Sample",
+                       sample_name = currentSample,
+                       variant_list = list(0))
+      sampleClassList[[currentSample]] <- newSample
+    } else {
+      currentSampleVariantList <- list()
+      for (j in 1:nrow(currentVCFFile)) {
+        positionString <- as.character(currentVCFFile[j, "Position"])
+        referenceString <- as.character(currentVCFFile[j, "Reference"])
+        alternativeString <- currentVCFFile[j, "Alternative"]
+        variantID <- paste(positionString, referenceString, alternativeString,
+                           sep = "_")
+        newVariant <- new("Variant",
+                          parent_sample = currentSample,
+                          position = as.numeric(positionString),
+                          ref_allele = referenceString,
+                          alt_allele = alternativeString)
+        currentSampleVariantList[[variantID]] <- newVariant
+      }
+      # Fill in the sample object
+      newSample <- new("Sample",
+                       sample_name = currentSample,
+                       variant_list = currentSampleVariantList)
+      # Add to sampleClassList
+      sampleClassList[[currentSample]] <- newSample
+    }
+  } 
+  return(sampleClassList)
+}
 
 #----- Set up Sample Data Table -----#
 
 # Alignment Count Data #
-GenerateAlignmentCounts <- function(dataSet) {
+GenerateSampleData <- function(dataSet) {
   
   # Read in sample alignment count data, calculate percent MNV
   readCounts <- read.delim(paste0("../", dataSet, "/alignment_counts.txt"))
@@ -99,11 +172,11 @@ GetVCF <- function(dataSet, sample) {
   names(vcfFile) <- vcfHeaders
   
   # Get the primary alignment value from the current sample's alignment counts
-  sampleAlignmentCounts <- GenerateAlignmentCounts(dataSet)
+  sampleAlignmentCounts <- GenerateSampleData(dataSet)
   samplePrimaryAlignments <- subset(sampleAlignmentCounts,
                                     Sample == sample)$`Primary Alignments`
   # Filter sampleAlignmentCounts by sample
-  #samplePrimaryAlignments <- subset(GenerateAlignmentCounts,
+  #samplePrimaryAlignments <- subset(GenerateSampleData,
                                     #sample == sample)$primary_alignments
 
   # The raw read depth at each position will be given by DP=xx; the first element
@@ -115,10 +188,8 @@ GetVCF <- function(dataSet, sample) {
   vcfFileFormatted <- vcfFile %>%
     mutate("Allelic Depth" = map_chr(.x = str_split(Values, pattern = ","),
                                      .f = tail, n = 1),
-           "Total Depth" = map_chr(.x = str_split(Info, pattern = ";"),
-                                   .f = function(x) {
-                                     depthStr <- head(x, 1)
-                                     stringr::str_remove(depthStr, "DP=")} ),
+           "Total Depth" = str_remove(str_extract(Info, "DP=[:digit:]+"),
+                                      "DP="),
            # Allelic Freq = (allelic depth/raw depth) * 100%
            "Allelic Frequency" = 
              round((100 * as.numeric(`Allelic Depth`)/as.numeric(`Total Depth`)), 

@@ -28,7 +28,8 @@ ui <- tagList(
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
                        choices = c("baldridge_rumspringa", "craig_mnv",
-                                   "larry_mnv_190213")),
+                                   "larry_mnv_190220", "larry_mnv_190213", 
+                                   "larry_mnv_190206", "pew_spikein_181118")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     
@@ -40,6 +41,9 @@ ui <- tagList(
            span(actionButton(inputId = "stackCoverage", label = "Stack Coverage",
                              style = "margin-left: 10px;",
                              icon("fas fa-stream"))),
+           span(actionButton(inputId = "commonVariants", label = "Find Common Variants",
+                             style = "margin-left:  10px",
+                             icon("far fa-list-alt"))),
            h6("GetSampleVec()"),
            p(verbatimTextOutput("verbatimOutput1")),
            h6("_cells_selected()"),
@@ -72,7 +76,7 @@ ui <- tagList(
 
 
 server <- function(input, output, session) {
-
+  
   hideTab(inputId = "navbarpage", target = "sampleTab")
   hideTab(inputId = "navbarpage", target = "coverageTab")
   hideTab(inputId = "navbarpage", target = "variantTab")
@@ -94,8 +98,8 @@ server <- function(input, output, session) {
     # This is SO SLOW, there must be a better place to do it #
     sampleData <- GenerateSampleData(dataSet = input$dataSetSelect)
     
-    currentSampleObjects <- BuildSampleObjects(dataSet = input$dataSetSelect,
-                                               sampleDataTable = sampleData)
+    #currentSampleObjects <- BuildSampleObjects(dataSet = input$dataSetSelect,
+                                               #sampleVector = sampleData$Sample)
       
     #----- Display Sample Data Table -----#
     

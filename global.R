@@ -36,12 +36,11 @@ setClass("Variant",
 #testDataSet <- GenerateSampleData(dataSetSelect) # used to make dataSetSamples
 #dataSetSamples <- as.character(testDataSet$Sample) # send to sampleVector
 
-BuildSampleObjects <- function(dataSet, sampleDataTable) {
+BuildSampleObjects <- function(dataSet, sampleVector) {
   # dataSet will come from input$dataSetSelect
-  # sampleDataTable will come from 
-  #   sampleData <- GenerateSampleData(dataSet = input$dataSetSelect)
-  sampleVector <- as.character(sampleDataTable$Sample)
-  sampleClassList <- list()
+  # sampleVector should automatically populate with all the samples available
+  #   in the selected data set
+  sampleClassList <- vector(mode = "list", length = length(sampleVector))
   # Build a Sample class object from the vector
   for (i in 1:length(sampleVector)) {
     currentSample <- sampleVector[i]
@@ -54,9 +53,11 @@ BuildSampleObjects <- function(dataSet, sampleDataTable) {
       newSample <- new("Sample",
                        sample_name = currentSample,
                        variant_list = list(0))
-      sampleClassList[[currentSample]] <- newSample
+      sampleClassList[[i]] <- newSample
+      names(sampleClassList)[i] <- currentSample
+      #sampleClassList[[currentSample]] <- newSample
     } else {
-      currentSampleVariantList <- list()
+      currentSampleVariantList <- vector(mode = "list", length = nrow(currentVCFFile))
       for (j in 1:nrow(currentVCFFile)) {
         positionString <- as.character(currentVCFFile[j, "Position"])
         referenceString <- as.character(currentVCFFile[j, "Reference"])
@@ -68,14 +69,18 @@ BuildSampleObjects <- function(dataSet, sampleDataTable) {
                           position = as.numeric(positionString),
                           ref_allele = referenceString,
                           alt_allele = alternativeString)
-        currentSampleVariantList[[variantID]] <- newVariant
+        currentSampleVariantList[[j]] <- newVariant
+        names(currentSampleVariantList)[j] <- variantID
+        #currentSampleVariantList[[variantID]] <- newVariant
       }
       # Fill in the sample object
       newSample <- new("Sample",
                        sample_name = currentSample,
                        variant_list = currentSampleVariantList)
       # Add to sampleClassList
-      sampleClassList[[currentSample]] <- newSample
+      sampleClassList[[i]] <- newSample
+      names(sampleClassList)[i] <- currentSample
+      #sampleClassList[[currentSample]] <- newSample
     }
   } 
   return(sampleClassList)
@@ -207,9 +212,14 @@ GetVCF <- function(dataSet, sample) {
 PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
 
   # Get the coverage file
-  bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/",
+  bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/", 
                              sample, "_sorted.bedGraph"),
                       col.names = c("chromosome", "start", "end", "value"))
+
+  if (nrow(bedgraphDT) == 0) {
+    stop("No coverage data to plot.", call. = FALSE)
+  }
+  
   # Generate the top axis track
   gtrack <- GenomeAxisTrack(fontsize = 20, fontcolor = "black", col = "black")
   # Generate the coverage track

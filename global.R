@@ -48,7 +48,7 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
     currentVCFFile <- GetVCF(dataSet, sample = currentSample)
     # Stop here if nothing is in the sample
     if (nrow(currentVCFFile) == 0) {
-      warning("At least one selected sample has no variants detected. No common variants among all samples.",
+      warning(paste("No variants detected in sample", currentSample),
               call. = FALSE)
       newSample <- new("Sample",
                        sample_name = currentSample,
@@ -247,4 +247,71 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
     return(coveragePlot)
   }
 }
+
+#----- Build Common Variants Table (Exact Matching) -----#
+FindExactMatches <- function(sampleObjectList) {
+  # Check if any samples have 0 variants and remove.  
+  variantsAreNull <- vector(mode = "logical", length = length(sampleObjectList))
+  for (i in 1:length(sampleObjectList)) {
+    variantsAreNull[i]<- is.null(names(sampleObjectList[[i]]@variant_list))
+  }
+  
+  selectedSampleObjectList <- sampleObjectList[!variantsAreNull]
+  
+  #----- Exact Matching (Position & Variant) -----#
+  
+  # For all the variants between the selected samples, make a table showing which
+  #   samples they are in.
+  #   First check that the sample has variants. (is it's variant_list slot == 0?)
+  #   If yes, skip it.
+  variantDFList <- vector(mode = "list", length = length(selectedSampleObjectList))
+  for (k in 1:length(selectedSampleObjectList)) {
+    currentSample <- selectedSampleObjectList[[k]]
+    currentSampleName <- currentSample@sample_name
+    currentSampleDF <- data.frame(names(currentSample@variant_list), 1)
+    colnames(currentSampleDF) <- c("variants", currentSampleName)
+    variantDFList[[k]] <- currentSampleDF
+  }
+  
+  # Merge the variant data frames together, convert NA's to 0's
+  fullDF <- Reduce(f = function(df1, df2) {merge(x = df1, y = df2,
+                                                 by = "variants", all = TRUE)},
+                   x = variantDFList)
+  fullDF[is.na(fullDF)] <- 0
+  
+  # What are the counts for each variant?
+  fullDFModified <- column_to_rownames(fullDF, var = "variants")
+  variantCounts <- rowSums(fullDFModified)
+  
+  # Which samples do you find each variant in?
+  variantInSamples <- vector(mode = "character", length = nrow(fullDFModified))
+  for (m in 1:nrow(fullDFModified)) {
+    currentRow <- fullDFModified[m, ]
+    currentVariantName <- rownames(currentRow)
+    samplesVecString <- paste(colnames(currentRow)[currentRow != 0], collapse = ", ")
+    variantInSamples[m] <- samplesVecString
+    names(variantInSamples)[m] <- currentVariantName
+  }
+  
+  # Change things to a DF merge
+  variantCountsDF <- data.frame("Number_of_Samples" = variantCounts)
+  variantInSamplesDF <- data.frame("Samples" = variantInSamples)
+  # Make sure the dimensions of these match
+  if (!(identical(dim(variantCountsDF), dim(variantInSamplesDF)))) {
+    stop("Something is wrong with the variant/sample counting.",
+         call. = FALSE)
+  }
+  # Otherwise, merge them.
+  variantDataDF <- merge(variantInSamplesDF, variantCountsDF, by = "row.names")
+  variantDataDF <- variantDataDF %>%
+    filter(Number_of_Samples >= 2) %>%
+    arrange(desc(Number_of_Samples)) %>%
+    column_to_rownames(var = "Row.names")
+  
+  # Put warning within app.R to deal with empty table.
+  
+  return(variantDataDF)
+}
+
+
 

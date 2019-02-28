@@ -34,6 +34,9 @@ ui <- tagList(
            verbatimTextOutput("buttonValue")),
     
     tabPanel(title = "Sample Table", value = "sampleTab",
+             # checkbox for selecting/deselecting all
+             #checkboxInput(inputId = "dt_sel", "sel/desel all"),
+             #verbatimTextOutput(outputId = "selected_cells", TRUE),
            DT::dataTableOutput(outputId = "sampleDataTable"),
            actionButton(inputId = "inspVariants", 
                         label = "Inspect Variants",
@@ -70,58 +73,82 @@ ui <- tagList(
     tabPanel(title = "Variants", value = "variantTab",
              textInput(inputId = "variantTabTextBox", label = "Current Sample:"),
              DT::DTOutput(outputId = "variantTabDT"),
-             plotOutput(outputId = "variantTabCoveragePlot"))
+             plotOutput(outputId = "variantTabCoveragePlot")),
+    
+    tabPanel(title = "Common Variants", value = "commonVariantsTab",
+             textInput(inputId = "commonVariantsTabTextBox",
+                       label = "Current Samples:"),
+             DT::DTOutput(outputId = "commonVarTable"))
   )
 )
-
 
 server <- function(input, output, session) {
   
   hideTab(inputId = "navbarpage", target = "sampleTab")
   hideTab(inputId = "navbarpage", target = "coverageTab")
   hideTab(inputId = "navbarpage", target = "variantTab")
+  hideTab(inputId = "navbarpage", target = "commonVariantsTab")
   
   # define the vector that will hold user-selected samples for coverage display:
   sampleVec <- vector(mode = "character") 
   
   #----- Go -----#
   
+  # Get data set, hold in reactive variable so other functions may access
+  GetSampleData <- eventReactive(input$go, {
+    sampleData <- GenerateSampleData(dataSet = input$dataSetSelect)
+    return(sampleData)
+  })
+  
   observeEvent(input$go, {
     showTab(inputId = "navbarpage", target = "sampleTab", select = TRUE)
     hideTab(inputId = "navbarpage", target = "coverageTab")
     hideTab(inputId = "navbarpage", target = "variantTab")
+    hideTab(inputId = "navbarpage", target = "commonVariantsTab")
     
     # clear the vector that will hold user-selected samples for coverage disaplay:
     sampleVec <<- vector(mode = "character")
-    
-    #----- Generate Sample Data List for Common Variant Calling -----#
-    # This is SO SLOW, there must be a better place to do it #
-    sampleData <- GenerateSampleData(dataSet = input$dataSetSelect)
-    
-    #currentSampleObjects <- BuildSampleObjects(dataSet = input$dataSetSelect,
-                                               #sampleVector = sampleData$Sample)
-      
+
     #----- Display Sample Data Table -----#
-    
+  
     # columnDefs - hide the 3rd column (index 2) (number primary alignments)
     # formatStyle - add CSS style 'cursor: pointer' to the 1st column (i.e. sample)
     #   which is index 1 in in the DT object
     # Table set up to allow multiple cell selections:
     output$sampleDataTable <- DT::renderDataTable({
-      data = datatable(sampleData, 
+      data = datatable(GetSampleData(), 
                        selection = list(mode = "multiple", target = "cell"), 
                        rownames = FALSE,
                        options = list(
                          columnDefs = list(list(visible = FALSE, 
                                                 targets = c(2))),
-                         pageLength = 10,
-                         bLengthChange = 0)) %>%
+                         pageLength = 10)) %>%
+                         #bLengthChange = 0)) %>%
         formatStyle(columns = 1, cursor = "pointer") 
     })
   })
   
   #----- Sample Selection -----#
+  
+  #----- Select/Deselect All -----#
+  dt_proxy <- DT::dataTableProxy(outputId = "sampleDataTable")
+  
+  observeEvent(input$dt_sel, {
+    if (input$dt_sel == TRUE) {
+      # select all cells in column 0
+      DT::selectCells(dt_proxy, 
+                      selected = as.matrix(cbind(1:nrow(GetSampleData()), 0)))
+    } else {
+      DT::selectCells(dt_proxy, selected = NULL)
+    }
+    output$selected_cells <- renderPrint(print(input$sampleDataTable_cells_selected))
+  })
 
+  # need to handle passing the sample vec differently if that checkbox is TRUE
+  
+  #----- Individual Sample Selection -----#
+  
+  # this needs to respond to the changing matrix instead of input$sampleDataTable_cells_selected
   GetSampleVec <- eventReactive(input$sampleDataTable_cells_selected, {
     # Returns character vector of Sample IDs.
     currentCell <- input$sampleDataTable_cell_clicked # row, col, value info
@@ -158,30 +185,35 @@ server <- function(input, output, session) {
     return(sampleMtxFiltered)
   })
   
-  # enables/disable the Stack Coverage button and Inspect Variants button:
+  # Enable/Disable Buttons:
   observeEvent(input$sampleDataTable_cells_selected, {
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
     if (is.null(SelectedSampleIndices()) | all(is.na(SelectedSampleIndices()))) {
       disable("stackCoverage")
       disable("inspVariants")
+      disable("commonVariants")
       hideTab(inputId = "navbarpage", target = "coverageTab")
       hideTab(inputId = "navbarpage", target = "variantTab")
+      hideTab(inputId = "navbarpage", target = "commonVariantsTab")
       return() 
     } else {
       numIndices <- nrow(SelectedSampleIndices())
     }
     
     if (numIndices == 1) { # single sample selected
-      # enable inspVariants, disable stackCoverage
+      # enable inspVariants, disable stackCoverage and commonVariants
       # hide covTab if showing
       enable("inspVariants")
       disable("stackCoverage")
       hideTab(inputId = "navbarpage", target = "coverageTab")
+      disable("commonVariants")
+      hideTab(inputId = "navbarpage", target = "commonVariantsTab")
     } else if (numIndices >= 2) { # 2 + samples selected
-      # enable stackCoverage, disable inspVariants
+      # enable stackCoverage and commonVariants, disable inspVariants
       # hide variantTab if showing
       enable("stackCoverage")
+      enable("commonVariants")
       disable("inspVariants")
       hideTab(inputId = "navbarpage", target = "variantTab")
     }
@@ -250,14 +282,30 @@ server <- function(input, output, session) {
     
     # Dynamic Coverage Plots:
     output$dynamicCovPlots <- renderUI({
-      allCoveragData <- map(GetSampleVec(), function(y) {
-        p(h4(strong(y), style = "text-align: center;"), 
-          renderPlot({PlotCoverage(dataSet = input$dataSetSelect, sample = y)},
-                     height = 250), style = "margin-top: 30 px;")
+        allCoveragData <- map(GetSampleVec(), function(y) {
+          p(h4(strong(y), style = "text-align: center;"),
+            renderPlot({PlotCoverage(dataSet = input$dataSetSelect, sample = y)},
+                       height = 250), style = "margin-top: 30 px;")
         })
       })
-    
     })
+  
+  #----- Find Common Variants -----#
+  
+  observeEvent(input$commonVariants, {
+    showTab(inputId = "navbarpage", target = "commonVariantsTab", select = TRUE)
+    updateTextInput(session, inputId = "commonVariantsTabTextBox",
+                    value = GetSampleVec())
+    
+    # Put the selected samples and their variants into Sample objects
+    currentSampleObjects <- BuildSampleObjects(dataSet = input$dataSetSelect,
+                                               sampleVector = GetSampleVec())
+    
+    output$commonVarTable <- DT::renderDataTable({
+      data = datatable(data = FindExactMatches(sampleObjectList = currentSampleObjects))
+    })
+    
+  })
   
   #----- Inspect Variants -----#  
   
@@ -339,8 +387,6 @@ server <- function(input, output, session) {
     }
   }) # end of variant selection observeEvent
     
-
-  
 }
 
 shinyApp(ui = ui, server = server)

@@ -1,5 +1,16 @@
-
 library("stringr")
+
+setClass("Codon",
+         representation = representation(sequence = "character",
+                                         start = "numeric",
+                                         end = "numeric",
+                                         protein = "character"),
+         prototype = prototype(sequence = NA_character_,
+                               start = NA_real_,
+                               end = NA_real_,
+                               protein = NA_character_))
+
+
 
 
 orf3NT <- "ATGGCTGGCGCACTCTTTGGTGCGATTGGAGGTGGCCTGATGGGCATAATTGGCAATTCCATCTCAACAGTCCAGAATCTTCAGGCAAATAAACAATTGGCTGCACAGCAATTTGGCTATAATTCCTCTCTGCTTGCAACGCAAATTCAGGCCCAGAAGGATCTCACACTGATGGGGCAGCAGTTCAACCAGCAGCTCCAAGCCAACTCTTTCAAGCATGACCTTGAGATGCTTGGCGCCCAGGTGCAAGCCCAGGCGCAGGCCCAGGAGAACGCTATCAACATCAGGTCGGCGCAGCTCCAGGCCGCAGGCTTTTCAAAGTCCGACGCCATTCGCTTGGCCTCGGGGCAGCAACCGACGAGGGCCGTTGACTGGTCTGGGACGCGGTATTACGCCGCTAACCAGCCGGTTACGGGCTTCTCGGGTGGCTTCACCCCAAGTTACACTCCAGGTAGGCAAATGGCAGTCCGCCCTGTGGACACATCCCCTCTACCGGTCTCGGGTGGACGCATGCCGTCCCTTCGTGGAGGTTCCTGGTCTCCGCGTGATTACACGCCGCAGACCCAAGGCACCTACACGAACGGGCGGTTTGTGTCCTTCCCAAAGATCGGGAGTAGCAGGGCATAG"
@@ -28,15 +39,7 @@ aaVec[aaVec == ""] <- "STOP"
 names(codonVec) <- aaVec
 head(codonVec)
 
-setClass("Codon",
-         representation = representation(sequence = "character",
-                                         start = "numeric",
-                                         end = "numeric",
-                                         protein = "character"),
-         prototype = prototype(sequence = NA_character_,
-                               start = NA_real_,
-                               end = NA_real_,
-                               protein = NA_character_))
+
 
 
 codonClassList <- vector(mode = "list", length = length(codonVec))

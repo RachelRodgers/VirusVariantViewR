@@ -149,32 +149,12 @@ GenerateSampleData <- function(dataSet) {
 
 GetVCF <- function(dataSet, sample) {
   # Read in and format VCF file for selected sample
-  variantSample <- paste0("../", dataSet, "/variants/", sample, "_variants.vcf")
+  variantSample <- paste0("../", dataSet, "/variants/annotated_variants/", sample, "_variants_annotated.txt")
   
-  vcfFile <- tryCatch({ # in case there are no variants in the VCF file
-      read.delim(variantSample,
-                 comment.char = "#", # ignore VCF header lines
-                 header = FALSE,
-                 colClasses = "character") # suppress conversion of columns
-    },
-    error = function(e) {
-      # return an empty data frame
-      data.frame("Refence Genome" = character(0), 
-                 "Position" = character(0), 
-                 "ID" = character(0), 
-                 "Reference" = character(0), 
-                 "Alternative" = character(0),
-                 "Quality"= character(0), 
-                 "Filter" = character(0), 
-                 "Info" = character(0), 
-                 "Format" = character(0), 
-                 "Values" = character(0))
-    })
-  
-  vcfHeaders <- c("Refence Genome", "Position", 
-                  "ID", "Reference", "Alternative",
-                  "Quality", "Filter", "Info", "Format", "Values")
-  names(vcfFile) <- vcfHeaders
+  vcfFile <- data.table::fread(file = variantSample,
+                               header = TRUE, sep = "\t", 
+                               stringsAsFactors = FALSE,
+                               verbose = FALSE)
   
   # Get the primary alignment value from the current sample's alignment counts
   sampleAlignmentCounts <- GenerateSampleData(dataSet)
@@ -196,7 +176,7 @@ GetVCF <- function(dataSet, sample) {
            "Total Depth" = str_remove(str_extract(Info, "DP=[:digit:]+"),
                                       "DP="),
            # Allelic Freq = (allelic depth/raw depth) * 100%
-           "Allelic Frequency" = 
+           "Allelic Frequency (%)" = 
              round((100 * as.numeric(`Allelic Depth`)/as.numeric(`Total Depth`)), 
                                            digits = 2)) %>%
     select(-c("ID", "Filter", "Info", "Format", "Values"))

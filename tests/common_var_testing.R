@@ -76,7 +76,7 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
 }
 
 
-
+sampleObjectList <- originalSampleObjectList
 FindExactMatches <- function(sampleObjectList) {
   # Check if any samples have 0 variants and remove.  
   variantsAreNull <- vector(mode = "logical", length = length(sampleObjectList))
@@ -85,6 +85,12 @@ FindExactMatches <- function(sampleObjectList) {
   }
   
   selectedSampleObjectList <- sampleObjectList[!variantsAreNull]
+  
+  # Stop if all the samples selected have no variants in them.
+  if (length(selectedSampleObjectList) == 0) {
+    stop("No variants are detected in the selected samples.  Cannot identify common variants.",
+         call. = FALSE)
+  }
   
   #----- Exact Matching (Position & Variant) -----#
   
@@ -178,8 +184,8 @@ FindExactMatches <- function(sampleObjectList) {
 }
 
 ## TEST ##
-sampleVector <- c("Baldridge_17", "Baldridge_16", "Baldridge_15")
-dataSet <- "baldridge_rumspringa"
+sampleVector <- c("Baldridge_Filtered", "Baldridge_Unfiltered")
+dataSet <- "larry_mnv_190206"
 
 originalSampleObjectList <- BuildSampleObjects(dataSet = dataSet, sampleVector = sampleVector)
 matchesTest <- FindExactMatches(sampleObjectList = originalSampleObjectList)

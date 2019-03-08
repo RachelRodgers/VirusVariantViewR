@@ -1,5 +1,15 @@
 # global.R for variantVieweR_shiny_app
 
+#----- Libraries -----#
+
+library("shiny")
+library("shinythemes")
+library("shinyjs")
+library("DT")
+library("Gviz")
+library("data.table")
+library("tidyverse")
+
 #----- Global variables -----#
 
 previousMtxSize <- 0 # for determining when to re-paint the coverage plot
@@ -253,6 +263,12 @@ FindExactMatches <- function(sampleObjectList) {
   
   selectedSampleObjectList <- sampleObjectList[!variantsAreNull]
   
+  # Stop if all the samples selected have no variants in them.
+  if (length(selectedSampleObjectList) == 0) {
+    stop("No variants are detected in the selected samples.  Cannot identify common variants.",
+         call. = FALSE)
+  }
+  
   #----- Exact Matching (Position & Variant) -----#
   
   # For all the variants between the selected samples, make a table showing which
@@ -338,9 +354,14 @@ FindExactMatches <- function(sampleObjectList) {
   variantInformationFinal <- variantInformationFullDF %>%
     select(-c(Variation)) %>%
     select(Variation_Readable, everything()) %>%
-    data.table::setnames(old = "Variation_Readable",
-                         new = "Variation") %>%
     arrange(desc(Number_of_Samples))
+  
+  # Make more readable column names
+  colnames(variantInformationFinal) <- c("Variation", "Number of Samples",
+                                         "Samples", "Reference Allele", 
+                                         "Reference Codon", "Reference Protein", 
+                                         "Mutant Allele", "Mutant Codon", 
+                                         "Mutant Protein", "Mutation Type")
   
   return(variantInformationFinal)
 }

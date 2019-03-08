@@ -1,19 +1,11 @@
-#----- Libraries -----#
-
-library("shiny")
-library("shinythemes")
-library("shinyjs")
-library("DT")
-library("Gviz")
-library("data.table")
-library("tidyverse")
+#----- Source Definitions -----#
 
 source("./global.R")
 
 options(shiny.sanitize.errors = FALSE) # need to see the error
 options(ucscChromosomeNames = FALSE) # for Gvis
 
-#--------------------- Format, Run App ---------------------#
+#----- Format, Run App -----#
 
 ui <- tagList(
   
@@ -185,7 +177,7 @@ server <- function(input, output, session) {
     return(sampleMtxFiltered)
   })
   
-  # Enable/Disable Buttons:
+  # Enable/Disable Buttons & Hide/Show Tabs:
   observeEvent(input$sampleDataTable_cells_selected, {
     # Do nothing if nothing has been clicked, or the clicked cell isn't in the
     #   first column (which is index 0 for DT objects)
@@ -272,9 +264,10 @@ server <- function(input, output, session) {
                                                   #htmltools::strong(comment(x))),
                                                 selection = list(mode = "multiple",
                                                                  target = "cell"),
-                                                options = list(bLengthChange = 0,
-                                                               paging = FALSE,
-                                                               bFilter = 0),
+                                                options = list(pageLength = 5),
+                                                               #bLengthChange = 0,
+                                                               #paging = FALSE,
+                                                               #bFilter = 0),
                                                 rownames = FALSE)) %>%
                               formatStyle(columns = 2, cursor = "pointer")))
         })

@@ -20,6 +20,7 @@ ui <- tagList(
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
                        choices = c("baldridge_rumspringa", "craig_mnv",
+                                   "larry_mnv_190306",
                                    "larry_mnv_190220", "larry_mnv_190213", 
                                    "larry_mnv_190206", "pew_spikein_181118")),
            actionButton(inputId = "go", label = "Go"),
@@ -113,7 +114,7 @@ server <- function(input, output, session) {
                        rownames = FALSE,
                        options = list(
                          columnDefs = list(list(visible = FALSE, 
-                                                targets = c(2))),
+                                                targets = c(2))), # set target column4
                          pageLength = 10)) %>%
                          #bLengthChange = 0)) %>%
         formatStyle(columns = 1, cursor = "pointer") 

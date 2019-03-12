@@ -8,7 +8,7 @@ library("dplyr")
 library("stringr")
 
 # Find correct files, store and loop
-rawVCFFilePath <- "../larry_mnv_190220/variants"
+rawVCFFilePath <- "../larry_mnv_190306/variants"
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")
 dir.create(annotatedVCFDirectory)

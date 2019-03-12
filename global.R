@@ -154,7 +154,7 @@ GenerateSampleData <- function(dataSet) {
     
   }
   
-  # Merge Data #
+  # Try to Merge Metadata #
   # Add the average genome coverage numbers to the readCounts data
   sampleData <- readCounts %>%
     dplyr::mutate("avg_genome_cov" = genomeCovVec[sample])
@@ -162,8 +162,27 @@ GenerateSampleData <- function(dataSet) {
                          "% MNV", "Average Coverage")
   sampleData$Sample <- as.character(sampleData$Sample)
   
-  return(sampleData)
+  # Do we need to add metadata?
+  #   Check for the existence of a metadata file.  If it exists, read-in,
+  #   merge with the sample data and return.
+  metadataFile <- paste0("../", dataSet, "/", dataSet, "_metadata.txt")
   
+  if (file.exists(metadataFile)) {
+    
+    metadata <- read.delim(metadataFile)
+    
+    sampleDataExtended <- tryCatch({ # in case the Sample column isn't correct 
+      merge(metadata, sampleData, by = "Sample")},
+      error = function(e) {
+        # just return the un-merged sample data
+        sampleData
+      })
+    return(sampleDataExtended)
+    
+  } else {
+    return(sampleData)
+  }
+
 }
 
 

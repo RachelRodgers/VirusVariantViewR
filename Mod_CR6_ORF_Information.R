@@ -4,27 +4,59 @@
 
 #----- Load Libraries -----#
 library("Biostrings")
-library("stringr")
+library("tidyverse")
 
 #----- Defininitions -----#
 setClass("Codon",
          representation = representation(sequence_vector = "character",
-                                         protein = "character"),
+                                         protein = "character",
+                                         gene_name = "character",
+                                         protein_position = "character"),
          prototype = prototype(sequence_vector = NA_character_,
-                               protein = NA_character_))
+                               protein = NA_character_,
+                               gene_name = NA_character_,
+                               protein_position = NA_character_))
 
 PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
+  
+  # data needed for numbering the AA position of ORF1 proteins:
+  # add protein name and position - varies for ORF1 by position, all others constant
+  # Set up function to "re-set" amino acid position in genes in ORF1.  We want
+  #   to know amino-acid positions with couting re-starting at the first aa in
+  #   the protein, not the consecutive nt number or consecutive aa number (i)
+  #   except for the first gene, NS1/2.
+  orf1Genes <- c("NS3", "NS4", "NS5", "NS6", "NS7")
+  ResetAANum <- function(startNT, stopNT) {
+    # start - starting nt position of gene
+    # end -ending nt position of gene
+    # generate sequence 1...n
+    seqVector <- as.character(seq_along(startNT:stopNT))
+    names(seqVector) <- startNT:stopNT
+    return(seqVector)
+  }
+  orf1GenesList <- pmap(.l = list(startNT = list("NS3" = 342,
+                                                 "NS4" = 706,
+                                                 "NS5" = 871,
+                                                 "NS6" = 995,
+                                                 "NS7" = 1178),
+                                  stopNT = list("NS3" = 705,
+                                                "NS4" = 870,
+                                                "NS5" = 994,
+                                                "NS6" = 1177,
+                                                "NS7" = 1688)),
+                        .f = ResetAANum)
+  
   # read in, clean & separate ORFs
   orfNTRaw <- readr::read_file(orfFile)
   orfNTNoBreaks <- str_remove_all(orfNTRaw, pattern = "\\n")
   orfCodonsList <- stringr::str_split(gsub("(.{3})", "-\\1", orfNTNoBreaks),
-                                      pattern = "-")
-  orfCodonsVec <- orfCodonsList[[1]]
-  orfCodonsVec <- orfCodonsVec[2:length(orfCodonsVec)] # remove empty element
+                                      pattern = "-") # split into groups of 3 letters
+  orfCodonsVec <- orfCodonsList[[1]] # put groups in vector
+  orfCodonsVec <- orfCodonsVec[2:length(orfCodonsVec)] # remove empty element @ beginning of vec
   
   # put codons and start positions in df
-  orfCodonsDF <- data.frame("codon" = orfCodonsVec, stringsAsFactors = FALSE)
-  orfCodonsDF$position <- seq(from = orfStart, to = orfEnd, by = 3)
+  orfCodonsDF <- data.frame("codon" = orfCodonsVec, stringsAsFactors = FALSE) # start as single-row df
+  orfCodonsDF$position <- seq(from = orfStart, to = orfEnd, by = 3) # add numbers to df
   
   # populate codon class list
   orfCodonClassList <- vector(mode = "list", length = nrow(orfCodonsDF))
@@ -38,6 +70,32 @@ PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
     currentCodonClass <- new("Codon",
                              sequence_vector = codonString,
                              protein = Biostrings::GENETIC_CODE[[currentCodonInfo$codon]])
+    
+    if (orfName == "ORF1") {
+      currentCodonClass@gene_name <- case_when(i %in% 1:341 ~ "NS1/2",
+                                               i %in% 342:705 ~ "NS3",
+                                               i %in% 706:870 ~ "NS4",
+                                               i %in% 871:994 ~ "NS5",
+                                               i %in% 995:1177 ~ "NS6",
+                                               i %in% 1178:1688 ~ "NS7")
+      # Re-set the start of the protein so numbering begins at gene start.
+      currentCodonClass@protein_position <- case_when(i %in% 1:341 ~ as.character(i),
+                                                      i %in% 342:705 ~ orf1GenesList$NS3[as.character(i)],
+                                                      i %in% 706:870 ~ orf1GenesList$NS4[as.character(i)],
+                                                      i %in% 871:994 ~ orf1GenesList$NS5[as.character(i)],
+                                                      i %in% 995:1177 ~ orf1GenesList$NS6[as.character(i)],
+                                                      i %in% 1178:1688 ~ orf1GenesList$NS7[as.character(i)])
+    } else if (orfName == "ORF2") {
+      currentCodonClass@gene_name <- "VP1"
+      currentCodonClass@protein_position <- as.character(i)
+    } else if (orfName == "ORF3") {
+      currentCodonClass@gene_name <- "VP2"
+      currentCodonClass@protein_position <- as.character(i)
+    } else if (orfName == "ORF4") {
+      currentCodonClass@gene_name <- "VF1"
+      currentCodonClass@protein_position <- as.character(i)
+    }
+    
     orfCodonClassList[[i]] <- currentCodonClass
     names(orfCodonClassList)[i] <- paste0(orfName, "_codon_", i)
   }
@@ -52,6 +110,7 @@ PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
 orf1CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_ORF1_nt.txt",
                                            orfName = "ORF1",
                                            orfStart = 6, orfEnd = 5069)
+
 orf1CodonLUT <- rep(names(x = orf1CodonClassList), each = 3)
 names(orf1CodonLUT) <- seq(from = 6, to = 5069)
 
@@ -66,13 +125,28 @@ names(orf2CodonLUT) <- seq(from = 5056, to = 6681)
 
 # ~ ORF3 ~ #
 # Positions: 6681 - 7307
-# Length: 627 nt | 208 aa
+# Length: 627 nt | 209 aa
 orf3CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_ORF3_nt.txt",
                                            orfName = "ORF3",
                                            orfStart = 6681, orfEnd = 7307)
 
 orf3CodonLUT <- rep(names(x = orf3CodonClassList), each = 3)
 names(orf3CodonLUT) <- seq(from = 6681, to = 7307)
+
+# ~ ORF4 ~ #
+# Positions: 5069 - 5707
+# Length: 639 nt | 213 aa
+# Sequence for ORF4 will be extracted from ModCR6 genome (taken from Mod_CR6.fasta file)
+#   since it's not available online.
+fullGenome <- readr::read_file("../Mod_CR6_ORFs/Mod_CR6_FullGenome.txt")
+fullGenomeNoBreaks <- str_remove_all(fullGenome, pattern = "\\n")
+ORF4 <- base::substr(fullGenomeNoBreaks, start = 5069, stop = 5707)
+# save
+write(ORF4, "../Mod_CR6_ORFs/Mod_CR6_ORF4_nt.txt", sep = "\t")
+# Make class list and LUT
+orf4CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_ORF4_nt.txt",
+                                           orfName = "ORF4",
+                                           orfStart = 5069, orfEnd = 5707)
 
 # Biostrings AMINO_ACID_CODE with Stop Codon Added
 aminoAcidCode <- c(Biostrings::AMINO_ACID_CODE, "*" = "*")

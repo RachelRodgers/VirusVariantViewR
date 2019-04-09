@@ -2,7 +2,7 @@
 
 # For each VCF file, annotate the reference and alternative mutations.
 
-load("Mod_CR6_ORF_Information.RData")
+load("ORF_Data.RData")
 
 library("dplyr")
 library("stringr")
@@ -13,8 +13,8 @@ rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")
 dir.create(annotatedVCFDirectory)
 
-for (j in 1:length(rawVCFFiles)) {
-  variantSample <- rawVCFFiles[j]
+for (i in 1:length(rawVCFFiles)) {
+  variantSample <- rawVCFFiles[i]
   variantSampleName <- str_remove(string = basename(variantSample),
                                   pattern = "\\.vcf")
   # for current sample set, open each VCF file, add column for reference and mutant allele
@@ -47,102 +47,119 @@ for (j in 1:length(rawVCFFiles)) {
   
   # If VCF file isn't empty, add a column for Reference Protein, Alternative Protein,
   #   and Mutation Type
-  
-  # set orf ranges
-  orf1Range <- seq(from = 6, to = 5069)
-  orf2Range <- seq(from = 5070, to = 6681)
-  orf3Range <- seq(from = 6681, to = 7307)
-  
-  if (nrow(vcfFile) != 0) {
-    vcfFileAnnotated <- cbind(vcfFile, 
-                              "Reference Codon" = NA, "Reference Protein" = NA,
-                              "Mutant Codon" = NA, "Mutant Protein" = NA, 
-                              "Mutation Type" = NA)
-    
-    # loop over the rows and populate the new columns
-    for (i in 1:nrow(vcfFileAnnotated)) {
-      
-      currentRow <- vcfFileAnnotated[i, ] 
-      
-      if (nchar(currentRow$Reference) > 1 | nchar(currentRow$Alternative) > 1) {
-        vcfFileAnnotated[i, "Mutation Type"] <- "INDEL"
-        next()
-        
-      } else {
-        mutantAllele <- currentRow$Alternative
-        mutantPosition <- currentRow$Position
-        
-        currentCodonLUT <- NULL
-        currentCodonClassList <- NULL
-        
-        if (mutantPosition %in% orf1Range) {
-          currentCodonLUT <- orf1CodonLUT
-          currentCodonClassList <- orf1CodonClassList
-        } else if (mutantPosition %in% orf2Range) {
-          currentCodonLUT <- orf2CodonLUT
-          currentCodonClassList <- orf2CodonClassList
-        } else if (mutantPosition %in% orf3Range) {
-          currentCodonLUT <- orf3CodonLUT
-          currentCodonClassList <- orf3CodonClassList
-        }
-        
-        # if mutant position doesn't align to any orf, move on to next mutation
-        if (is.null(currentCodonClassList)) {
-          currentRow$`Mutation Type` <- "non-coding"
-          isNonCodingMutation <- TRUE
-          next()
-        }
-        
-        # determine identity of ref protein
-        referenceCodonName <- currentCodonLUT[as.character(mutantPosition)]
-        referenceCodon <- currentCodonClassList[[referenceCodonName]]
-        referenceCodonString <- paste(referenceCodon@sequence_vector, collapse = "")
-        referenceProtein <- Biostrings::GENETIC_CODE[[referenceCodonString]]
-        referenceProteinFull <- aminoAcidCode[[referenceProtein]]
-        vcfFileAnnotated[i, "Reference Protein"] <- referenceProteinFull
-        vcfFileAnnotated[i, "Reference Codon"] <- referenceCodonString
-        
-        # determine identity of mutant protein from ref codon
-        mutantCodon <- referenceCodon@sequence_vector
-        mutantCodon[as.character(mutantPosition)] <- mutantAllele
-        mutantCodonString <- paste(mutantCodon, collapse = "")
-        mutantProtein <- Biostrings::GENETIC_CODE[[mutantCodonString]]
-        mutantProteinFull <- aminoAcidCode[[mutantProtein]]
-        vcfFileAnnotated[i, "Mutant Protein"] <- mutantProteinFull
-        vcfFileAnnotated[i, "Mutant Codon"] <- mutantCodonString
-        
-        # Determine mutation type
-        if (referenceProtein == mutantProtein) {
-          # synonymous
-          vcfFileAnnotated[i, "Mutation Type"] <- "synonymous"
-        } else {
-          if (mutantProtein == "*") {
-            # nonsense
-            vcfFileAnnotated[i, "Mutation Type"] <- "nonsense"
-          } else {
-            # missense
-            vcfFileAnnotated[i, "Mutation Type"] <- "missense"
-          }
-        }
-        
-      }
-    }
-    
-    # write the file out
-    write.table(x = vcfFileAnnotated,
-                file = paste(annotatedVCFDirectory, "/", 
-                             variantSampleName, "_annotated.txt",
-                             sep = ""),
-                append = FALSE, quote = FALSE, sep = "\t", row.names = FALSE)
-    
-  } else { # empty file
+  if (nrow(vcfFile) == 0) {
     write.table(x = vcfFile,
                 file = paste(annotatedVCFDirectory, "/",
                              variantSampleName, "_annotated.txt",
                              sep = ""),
                 append = FALSE, quote = FALSE, sep = "\t", row.names = FALSE)
+  } else {
+    vcfFileAnnotated <- cbind(vcfFile, "Location" = NA,
+                              "Reference Codon" = NA, "Reference Protein" = NA,
+                              "Mutant Codon" = NA, "Mutant Protein" = NA, 
+                              "Mutation Type" = NA)
+    
+    # loop over the rows and populate the new columns
+    for (j in 1:nrow(vcfFileAnnotated)) {
+      mutationIsINDEL <- FALSE
+      currentRow <- vcfFileAnnotated[j, ] 
+      # Mutation Information:
+      mutantPosition <- currentRow$Position
+      mutantAllele <- currentRow$Alternative
+      
+      # Do we have an INDEL?
+      if (nchar(currentRow$Reference) > 1 | nchar(currentRow$Alternative) > 1) {
+        mutationIsINDEL <- TRUE
+      } 
+      
+      # Which orf(s) is this position in?
+      orfSelectionVec <- vector(mode = "logical", length = length(orfList))
+      for (k in 1:length(orfList)) {
+        orfSelectionVec[k] <- mutantPosition %in% orfList[[k]]@range
+      }
+      
+      # Get the correct orf objects
+      currentORFObjects <- orfList[orfSelectionVec]
+      orfCount <- length(currentORFObjects)
+      
+      # In case no ORF objects were selected:
+      if (orfCount == 0) {
+        vcfFileAnnotated[j, "Location"] <- "Non-coding"
+        next() # go to next line in file
+      }
+      
+      # Loop over the ORF objects and extract the location information
+      # Make vector to hold location information in case there is more than one orf.
+      #   This will be concatenated together later and appear in a single cell in the
+      #   variant table.
+      locationInfoVec <- vector("character", orfCount)
+      referenceCodonVec <- vector("character", orfCount)
+      referenceProteinVec <- vector("character", orfCount)
+      mutantCodonVec <- vector("character", orfCount)
+      mutantProteinVec <- vector("character", orfCount)
+      mutationTypeVec <- vector("character", orfCount)
+      
+      for (k in 1:length(currentORFObjects)) {
+        # What's the current ORF?
+        currentORF <- currentORFObjects[[k]]
+        currentORFName <- currentORF@name
+        currentORFCodons <- currentORF@codons
+        # What codon should we focus on?
+        referenceCodonName <- currentORF@LUT[mutantPosition]
+        # ~ Location Info ~ #
+        currentGene <- currentORFCodons[[referenceCodonName]]@gene_name
+        aaPosition <- currentORFCodons[[referenceCodonName]]@protein_position
+        locationString <- paste(toupper(currentORFName), currentGene, "AA#", aaPosition)
+        locationInfoVec[k] <- locationString
+        
+        # ~ Is mutation an INDEL? ~ #
+        if (mutationIsINDEL == TRUE) {
+          vcfFileAnnotated[j, "Mutation Type"] <- "INDEL"
+          break() # exit this loop
+        }
+        
+        # ~ Reference Information ~ #
+        referenceCodonString <- paste(currentORFCodons[[referenceCodonName]]@sequence_vector, 
+                                      collapse = "")
+        referenceCodonVec[k] <- referenceCodonString
+        
+        referenceProtein <- aminoAcidCode[[Biostrings::GENETIC_CODE[[referenceCodonString]]]]
+        referenceProteinVec[k] <- referenceProtein
+        
+        # ~ Mutant Information ~ #
+        mutantCodon <- currentORFCodons[[referenceCodonName]]@sequence_vector
+        mutantCodon[as.character(mutantPosition)] <- mutantAllele # stick in the mutation
+        mutantCodonString <- paste(mutantCodon, collapse = "")
+        mutantCodonVec[k] <- mutantCodonString
+        
+        mutantProtein <- aminoAcidCode[[Biostrings::GENETIC_CODE[[mutantCodonString]]]]
+        mutantProteinVec[k] <- mutantProtein
+        
+        # ~ Mutation Type ~ #
+        mutationTypeVec[k] <- case_when(referenceProtein == mutantProtein ~ "synonymous",
+                                        mutantProtein == "*" ~ "nonsense",
+                                        TRUE ~ "missense")
+      } # done looping over ORF objects 
+      
+      # Populate the annotations.
+      vcfFileAnnotated[j, "Location"] <- paste(locationInfoVec, collapse = "; ")
+      
+      if (mutationIsINDEL == TRUE) {
+        next() # go to next variant
+      }
+      
+      vcfFileAnnotated[j, "Reference Codon"] <- paste(referenceCodonVec, collapse = "; ")
+      vcfFileAnnotated[j, "Reference Protein"] <- paste(referenceProteinVec, collapse = "; ")
+      vcfFileAnnotated[j, "Mutant Codon"] <- paste(mutantCodonVec, collapse = "; ")
+      vcfFileAnnotated[j, "Mutant Protein"] <- paste(mutantProteinVec, collapse = "; ")
+      vcfFileAnnotated[j, "Mutation Type"] <- paste(mutationTypeVec, collapse = "; ")
+    }
+    
+    # write the file out
+    write.table(x = vcfFileAnnotated,
+                file = paste(annotatedVCFDirectory, "/",
+                             variantSampleName, "_annotated.txt",
+                             sep = ""),
+                append = FALSE, quote = FALSE, sep = "\t", row.names = FALSE)
   }
-  
-  
 }
-

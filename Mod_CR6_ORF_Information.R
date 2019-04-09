@@ -15,7 +15,17 @@ setClass("Codon",
          prototype = prototype(sequence_vector = NA_character_,
                                protein = NA_character_,
                                gene_name = NA_character_,
-                               protein_position = NA_character_))
+                               protein_position = NA_character_)
+         )
+
+setClass("ORF",
+         representation = representation(name = "character",
+                                         range = "character",
+                                         LUT = "character",
+                                         codons = "list"),
+         prototype = prototype(name = NA_character_,
+                               range = NA_character_,
+                               LUT = NA_character_))
 
 PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
   
@@ -48,7 +58,7 @@ PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
   
   # read in, clean & separate ORFs
   orfNTRaw <- readr::read_file(orfFile)
-  orfNTNoBreaks <- str_remove_all(orfNTRaw, pattern = "\\n")
+  orfNTNoBreaks <- str_remove_all(orfNTRaw, pattern = "[:cntrl:]")
   orfCodonsList <- stringr::str_split(gsub("(.{3})", "-\\1", orfNTNoBreaks),
                                       pattern = "-") # split into groups of 3 letters
   orfCodonsVec <- orfCodonsList[[1]] # put groups in vector
@@ -60,7 +70,7 @@ PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
   
   # populate codon class list
   orfCodonClassList <- vector(mode = "list", length = nrow(orfCodonsDF))
-  
+ 
   for(i in 1:nrow(orfCodonsDF)) {
     currentCodonInfo <- orfCodonsDF[i, ]
     codonString <- unlist(base::strsplit(currentCodonInfo$codon, split = ""))
@@ -114,6 +124,13 @@ orf1CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_OR
 orf1CodonLUT <- rep(names(x = orf1CodonClassList), each = 3)
 names(orf1CodonLUT) <- seq(from = 6, to = 5069)
 
+orf1 <- new("ORF",
+            name = "orf1",
+            range = names(orf1CodonLUT),
+            LUT = orf1CodonLUT,
+            codons = orf1CodonClassList)
+
+
 # ~ ORF2 ~ #
 # Positions 5056 - 6681
 # Length: 1626 nt | 541 aa
@@ -122,6 +139,12 @@ orf2CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_OR
                                            orfStart = 5056, orfEnd = 6681)
 orf2CodonLUT <- rep(names(x = orf2CodonClassList), each = 3)
 names(orf2CodonLUT) <- seq(from = 5056, to = 6681)
+
+orf2 <- new("ORF",
+            name = "orf2",
+            range = names(orf2CodonLUT),
+            LUT = orf2CodonLUT,
+            codons = orf2CodonClassList)
 
 # ~ ORF3 ~ #
 # Positions: 6681 - 7307
@@ -132,6 +155,12 @@ orf3CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_OR
 
 orf3CodonLUT <- rep(names(x = orf3CodonClassList), each = 3)
 names(orf3CodonLUT) <- seq(from = 6681, to = 7307)
+
+orf3 <- new("ORF",
+            name = "orf3",
+            range = names(orf3CodonLUT),
+            LUT = orf3CodonLUT,
+            codons = orf3CodonClassList)
 
 # ~ ORF4 ~ #
 # Positions: 5069 - 5707
@@ -147,9 +176,20 @@ write(ORF4, "../Mod_CR6_ORFs/Mod_CR6_ORF4_nt.txt", sep = "\t")
 orf4CodonClassList <- PopulateCodonClasses(orfFile = "../Mod_CR6_ORFs/Mod_CR6_ORF4_nt.txt",
                                            orfName = "ORF4",
                                            orfStart = 5069, orfEnd = 5707)
+orf4CodonLUT <- rep(names(x = orf4CodonClassList), each = 3)
+names(orf4CodonLUT) <- seq(from = 5069, to = 5707)
+
+orf4 <- new("ORF",
+            name = "orf4",
+            range = names(orf4CodonLUT),
+            LUT = orf4CodonLUT,
+            codons = orf4CodonClassList)
+
+orfList <- list("orf1" = orf1, "orf2" = orf2, "orf3" = orf3, "orf4" = orf4)
 
 # Biostrings AMINO_ACID_CODE with Stop Codon Added
 aminoAcidCode <- c(Biostrings::AMINO_ACID_CODE, "*" = "*")
 
-
 save.image("Mod_CR6_ORF_Information.RData")
+
+save(orfList, aminoAcidCode, file = "ORF_Data.RData")

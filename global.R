@@ -39,7 +39,7 @@ setClass("Variant",
 
 # Returns a list of Sample objects, each of which contains a list of
 #   Variant objects.
-#dataSetSelect <- "baldridge_rumspringa"
+#dataSetSelect <- "ls_ee_mnv_190403"
 #testDataSet <- GenerateSampleData(dataSetSelect) # used to make dataSetSamples
 #dataSetSamples <- as.character(testDataSet$Sample) # send to sampleVector
 
@@ -272,7 +272,6 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
 #----- Build Common Variants Table (Exact Matching) -----#
 
 # Need to handle condition where there's no data!
-
 FindExactMatches <- function(sampleObjectList) {
   # Check if any samples have 0 variants and remove.  
   variantsAreNull <- vector(mode = "logical", length = length(sampleObjectList))

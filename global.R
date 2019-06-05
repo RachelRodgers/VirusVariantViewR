@@ -233,6 +233,8 @@ GetVCF <- function(dataSet, sample) {
 PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
 
   # Get the coverage file
+  # Colnames taken from 
+  # https://bedtools.readthedocs.io/en/latest/content/tools/genomecov.html
   bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/", 
                              sample, "_sorted.bedGraph"),
                       col.names = c("chromosome", "start", "end", "value"))

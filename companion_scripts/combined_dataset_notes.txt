@@ -1,0 +1,11 @@
+"combined_dataset" notes
+
+June 6, 2019
+
+Some samples from 190516_Baldridge_EH were combined with baldridge_rumspringa samples, as they represent baldridge_rumspringa samples that were later re-sequenced to try and improve coverage/variant calling.
+
+Ebrahim gave me a list indicating which of the EH samples should be combined with the rumspringa samples.  I used the script Concatenate_Files.R (in VariantViewR/VariantViewR_shiny_app/companion_scripts) to join these files into new "concatenated" files.  The concatenated files are named after the original rumspringa file.  For example, EH #2 combined with rumspringa #1 would be #1 concatenated.  I then ran these files through the usual pipeline.
+
+For display with the application, I simply modified the alignment_counts.txt file to contain the concatenated rumspringa files plus older rumspringa files that were not concatenated with anything, for a total of 33 samples (as before).  However the directories contain a lot more data/files than that because I'm quite lazy and didn't bother selectively copying, and leave it to the app (which pulls its samples from the alignment_counts.txt file).
+
+Ebrahim has asked me to re-name these files from 01 to 33 for ease.  In order to do this, I'll re-name the concatenated files, plus the original non-concatenated rumspringa files and re-run the pipeline.

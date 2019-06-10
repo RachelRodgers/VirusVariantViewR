@@ -114,7 +114,8 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
 GenerateSampleData <- function(dataSet) {
   
   # Read in sample alignment count data, calculate percent MNV
-  readCounts <- read.delim(paste0("../", dataSet, "/alignment_counts.txt"))
+  readCounts <- read.delim(paste0("../", dataSet, "/alignment_counts.txt"),
+                           colClasses = c("character", "numeric", "numeric"))
   readCounts <- readCounts %>%
     mutate("percent_MNV" = round(100*(primary_alignments/total_reads), 
                                  digits = 2))

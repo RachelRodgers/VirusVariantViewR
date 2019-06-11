@@ -83,7 +83,7 @@ for (i in 1:length(ehFilePatterns)) {
 #firstRumFile <- allFilesList[grepl(firstRumFilePattern, allFilesList)]
 
 #outFilePrefix <- str_extract("Baldridge_17_SIC_index_0496_SIC_index_0545_TCACTACAG_TATCAGCAG_S17_L001_R2_001.fastq.gz",
-                             "^Baldridge_[:digit:]{1,2}_")
+                             #"^Baldridge_[:digit:]{1,2}_")
 #outFileSuffix <- str_extract(firstRumFile, "_R[1,2]")
 #outFileName <- paste0(outFilePrefix, "concatenated", outFileSuffix, ".fastq.gz")
 

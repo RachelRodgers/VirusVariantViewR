@@ -18,3 +18,9 @@ June 7, 2019
 
 I'm moving the concatenated files plus the non-concatenated (baldridge_rumspringa) files back to Pathogen for re-naming.  Used script Rename_Files.R.  then re-ran the variantviewR scripts.
 
+--------------------------------------
+
+June 11, 2019
+
+Ebrahim didn't want them re-named like this.  Re-named again with Rename_Files_Again.R locally.  Combined these with manually re-named EH samples and put in the raw_data directory of Combined_Dataset.  Currently re-running the VariantViewR pipeline.
+

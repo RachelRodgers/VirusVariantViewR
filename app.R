@@ -28,7 +28,7 @@ ui <- tagList(
                                    #"ls_ee_mnv_190403",
                                    #"pew_spikein_181118",
                                    "190516_Baldridge_EH",
-                                   "combined_dataset")),
+                                   "Combined_Data")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     

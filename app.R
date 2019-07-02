@@ -28,7 +28,9 @@ ui <- tagList(
                                    #"ls_ee_mnv_190403",
                                    #"pew_spikein_181118",
                                    "190516_Baldridge_EH",
-                                   "Combined_Data")),
+                                   "Combined_Data",
+                                   "170406_M00990_PreB_SIC",
+                                   "170406_M02789_PostB_SIC")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     
@@ -360,8 +362,8 @@ server <- function(input, output, session) {
           newMatrix <- cbind((filteredMatrix[ , 1]), filteredMatrix[ , 2] + 1)
           currentSampleValue <- input$sampleDataTable_cell_clicked$value
           # Pull the data for selected variants from the variant call file
-          vcf <- GetVCF(dataSet = input$dataSetSelect,
-                        sample = GetSampleVec())[newMatrix]
+          vcf <- as.data.frame(GetVCF(dataSet = input$dataSetSelect,
+                                      sample = GetSampleVec()))[newMatrix]
           # Make the plot with variants identified
           output$variantTabCoveragePlot <- renderPlot({
             PlotCoverage(dataSet = input$dataSetSelect,

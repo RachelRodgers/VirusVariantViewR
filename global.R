@@ -70,7 +70,7 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
       for (j in 1:nrow(currentVCFFile)) {
         positionString <- as.character(currentVCFFile[j, "Position"])
         referenceString <- as.character(currentVCFFile[j, "Reference"])
-        alternativeString <- currentVCFFile[j, "Alternative"]
+        alternativeString <- as.character(currentVCFFile[j, "Alternative"])
         variantID <- paste(positionString, referenceString, alternativeString,
                            sep = "_")
         variantReadableID <- paste(positionString, " ", referenceString, "/", alternativeString, sep = "")
@@ -106,7 +106,6 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
   } 
   return(sampleClassList)
 }
-
 
 #----- Set up Sample Data Table -----#
 
@@ -191,9 +190,9 @@ GenerateSampleData <- function(dataSet) {
 
 GetVCF <- function(dataSet, sample) {
   # Read in and format VCF file for selected sample
-  variantSample <- paste0("../", dataSet, "/variants/annotated_variants/", sample, "_variants_annotated.txt")
-  
-  vcfFile <- data.table::fread(file = variantSample,
+  vcfFile <- data.table::fread(file = paste0("../", dataSet, 
+                                             "/variants/annotated_variants/", 
+                                             sample, "_variants_annotated.txt"),
                                header = TRUE, sep = "\t", 
                                stringsAsFactors = FALSE,
                                verbose = FALSE)
@@ -205,29 +204,26 @@ GetVCF <- function(dataSet, sample) {
   # Filter sampleAlignmentCounts by sample
   #samplePrimaryAlignments <- subset(GenerateSampleData,
                                     #sample == sample)$primary_alignments
-
-  # The raw read depth at each position will be given by DP=xx; the first element
-  #   in the INFO field.  Will divide the allelic depth by this value to get
-  #   the allelic frequency.
-  # The last number in Values will be the allelic depth - unfiltered number of 
-  #   reads supporting the reported allele(s)
   
+  removeCols <- c("ID", "Filter", "Info", "Format", "Values")
+  # Remove add'l cols if VCF file not empty (these values won't be in empty vcf file)
+  if (nrow(vcfFile) != 0) {
+    removeCols <- c(removeCols, "Ref_Reads", "Alt_Reads", "AD") 
+  }
+
   vcfFileFormatted <- vcfFile %>%
-    mutate("Allelic Depth" = map_chr(.x = str_split(Values, pattern = ","),
-                                     .f = tail, n = 1),
-           "Total Depth" = str_remove(str_extract(Info, "DP=[:digit:]+"),
-                                      "DP="),
-           # Allelic Freq = (allelic depth/raw depth) * 100%
-           "Allelic Frequency (%)" = 
-             round((100 * as.numeric(`Allelic Depth`)/as.numeric(`Total Depth`)), 
-                                           digits = 2)) %>%
-    select(-c("ID", "Filter", "Info", "Format", "Values"))
+    select(-c(removeCols))
   
   comment(vcfFileFormatted) <- sample
   
   return(vcfFileFormatted)
   
 }
+
+#dataSetSelect <- "Combined_Data"
+#testDataSet <- GenerateSampleData(dataSetSelect) # used to make dataSetSamples
+#dataSetSamples <- as.character(testDataSet$Sample) # send to sampleVector
+#vcfTest <- GetVCF(dataSet = dataSetSelect, sample = dataSetSamples[12])
 
 #----- Generate Coverage Plot for Sample & Variants -----#
 

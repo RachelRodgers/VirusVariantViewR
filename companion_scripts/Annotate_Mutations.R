@@ -1,14 +1,17 @@
 # Annotate_Mutations.R
 
-# For each VCF file, annotate the reference and alternative mutations.
+# For each VCF file, annotate the reference and alternative mutations and add
+#   total depth information from the sample's bedGraph file.
 
 load("ORF_Data.RData")
 
 library("dplyr")
 library("stringr")
+library("data.table")
 
 # Find correct files, store and loop
-rawVCFFilePath <- "../combined_dataset/variants"
+dataSet <- "170406_M02789_PostB_SIC"
+rawVCFFilePath <- paste0("../", dataSet, "/variants")
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")
 dir.create(annotatedVCFDirectory)
@@ -154,6 +157,56 @@ for (i in 1:length(rawVCFFiles)) {
       vcfFileAnnotated[j, "Mutant Protein"] <- paste(mutantProteinVec, collapse = "; ")
       vcfFileAnnotated[j, "Mutation Type"] <- paste(mutationTypeVec, collapse = "; ")
     }
+    
+    # Add Total Depth information ere, then write out (see find_range_exp.R)
+    # Get sample Name
+    sampleName <- str_remove(variantSampleName, "_variants")
+    # read in bedgraphDT
+    bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/",
+                               sampleName, "_sorted.bedGraph"),
+                        col.names = c("chromosome", "start", "end", "value"),
+                        colClasses = c("character", "integer", "integer", "character"))
+    # generate coverage map
+    coverageRangeList <- vector(mode = "list", length = nrow(bedgraphDT))
+    
+    for (j in 1:nrow(bedgraphDT)) {
+      coverageRangeList[[j]] <- seq(from = as.numeric(bedgraphDT[j, "start"]),
+                                    to = as.numeric(bedgraphDT[j, "end"] - 1)) # -1 because end is also start of next range
+      names(coverageRangeList)[j] <- bedgraphDT[j, "value"]
+    }
+    
+    GetCoverageAtPosition <- function(position) {
+      for (pos_idx in 1:length(coverageRangeList)) {
+        if (position %in% coverageRangeList[[pos_idx]]) {
+          covValue <- names(coverageRangeList)[pos_idx]
+          return(covValue)
+          next()
+        }
+      }
+    }
+    
+    for (j in 1:nrow(vcfFileAnnotated)) {
+      currentPosition <- vcfFileAnnotated[j, "Position"]
+      vcfFileAnnotated[j, "Total Depth"] <- GetCoverageAtPosition(position = currentPosition)
+    }
+    
+    # Calculate Allelic Depth
+    
+    # The AD value is given as ##,## and is the last key-value element in the
+    #   Value column of the vcf file.  The leading ## represents the number of
+    #   reads supporting the reference allele, while the second ## represents
+    #   the number of reads supporting the alternative allele.  Dividing
+    #   the alt reads by (alt + ref reads) should yield the allelic frequency.
+    
+    vcfFileAnnotated <- vcfFileAnnotated %>% 
+      mutate("AD" = map_chr(.x = str_split(Values, pattern = ":"), .f = tail, n = 1),
+             "Ref_Reads" = map_chr(.x = str_split(AD, pattern = ","), .f = head, n = 1),
+             "Alt_Reads" = map_chr(.x = str_split(AD, pattern = ","), .f = tail, n = 1),
+             "Allelic Frequencey (%)" = ifelse(Ref_Reads == "0",
+                                               yes = "100",
+                                               no = 
+                                                 round(100 * (as.numeric(Alt_Reads)/(as.numeric(Ref_Reads) + as.numeric(Alt_Reads))),
+                                                       digits = 2)))
     
     # write the file out
     write.table(x = vcfFileAnnotated,

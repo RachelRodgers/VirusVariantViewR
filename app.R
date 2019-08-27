@@ -20,14 +20,6 @@ ui <- tagList(
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
                        choices = c("baldridge_rumspringa", 
-                                   #"craig_mnv",
-                                   #"larry_mnv_190306",
-                                   #"larry_mnv_190220", 
-                                   #"larry_mnv_190213", 
-                                   #"larry_mnv_190206",
-                                   #"ls_ee_mnv_190403",
-                                   #"pew_spikein_181118",
-                                   "190516_Baldridge_EH",
                                    "Combined_Data",
                                    "170406_M00990_PreB_SIC",
                                    "170406_M02789_PostB_SIC")),
@@ -120,10 +112,7 @@ server <- function(input, output, session) {
       data = datatable(GetSampleData(), 
                        selection = list(mode = "multiple", target = "cell"), 
                        rownames = FALSE,
-                       options = list(
-                         columnDefs = list(list(visible = FALSE, 
-                                                targets = c(2))), # set target column4
-                         pageLength = 10)) %>%
+                       options = list(pageLength = 10)) %>%
                          #bLengthChange = 0)) %>%
         formatStyle(columns = 1, cursor = "pointer") 
     })

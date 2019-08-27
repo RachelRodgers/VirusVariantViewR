@@ -1,0 +1,8 @@
+VariantViewR_Notes.txt
+
+-------------------------
+July 9, 2019
+
+I am modifying the VariantViewR scripts and app to change the way % MNV is calculated.  Previously I was getting the number of primary alignments for pairs of reads instead of a total number of reads (mates), even though I was dividing by a total number of reads in a sample's R1 and R2 files.  This meant that the fraction calculated for %MNV was very different from the overall alignment rate reported in the bowtie2 log file.  I went back through and figured out how overall alignment rate is calculated, and saw that this value should be the same value I'm calculating for % MNV, because it counts the total number of reads that aligned one more times (but doesn't count multiple mappings).  So this is why I'm fixing it.
+
+Initially I will re-run the VariantViewR pipeline on baldridge_rumspringa, Combined_Data, 170406_M00990_PreB_SIC, and 170406_M02789_PostB_SIC but will eventually need to go back and fix them all.

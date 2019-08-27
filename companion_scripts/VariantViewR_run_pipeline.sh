@@ -20,7 +20,7 @@ sbatch --wait ./VariantViewR_array.sbatch $1
 
 echo "Concatenating alignment counts info"
 # Concatenate a tab-delim header with the output of all the ./sample_data/alignment_data/*_alignCounts.txt
-cat <(echo -e "sample\ttotal_reads\tprimary_alignments") \
+cat <(echo -e "sample\ttotal_reads\tleft_alignments\tright_alignments") \
         ./$1/sample_data/alignment_data/*alignCounts.txt > ./$1/alignment_counts.txt
 
 echo "Done"

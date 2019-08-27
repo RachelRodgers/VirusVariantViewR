@@ -10,7 +10,7 @@ library("stringr")
 library("data.table")
 
 # Find correct files, store and loop
-dataSet <- "170406_M02789_PostB_SIC"
+dataSet <- "baldridge_rumspringa"
 rawVCFFilePath <- paste0("../", dataSet, "/variants")
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")

@@ -2,9 +2,9 @@
 
 # VariantViewR_array.sbatch
 
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=1
 #SBATCH --mem=50G
-#SBATCH --array=1-19%10
+#SBATCH --array=1-33%10
 #SBATCH -J Variant_ViewR_array
 #SBATCH --mail-user=rachel.rodgers
 #SBATCH --mail-type=ALL
@@ -31,10 +31,10 @@ mkdir -p ./$1/sample_data/genome_coverage
 read1=$(sed -n ${SLURM_ARRAY_TASK_ID}p $1_lookup.txt)
 read2=$(echo ${read1} | sed s/R1/R2/g)
 
-# From the read1 file, get the short sample identifier, which will be of the form: Baldridge_##
-# Baldridge_## will be the first two fields of the file name if delimited on underscores
-#sample=$(echo ${read1} | cut -d'_' -f 1-2)
-sample=$(echo ${read1} | cut -d'_' -f 1-3)
+# From the read1 file, get the short sample identifier
+sample=$(echo ${read1} | cut -d'_' -f 1-2)
+#sample=$(echo ${read1} | cut -d'_' -f 1-3)
+#sample=$(echo ${read1} | cut -d'_' -f 1)
 
 echo "Working on ${sample}."
 
@@ -58,18 +58,35 @@ bbduk.sh \
 	out1=./$1/QC_reads/${sample}_qualTrim_R1.fastq \
 	out2=./$1/QC_reads/${sample}_qualTrim_R2.fastq \
 	qtrim=r trimq=25 minlength=75 &> ./$1/QC_reads/${sample}_qualityTrim.log
+	
+#----- Deduplication -----#
+
+echo "Removing exact duplicates."
+dedudupe.sh \
+	in1=./$1/QC_reads/${sample}_qualTrim_R1.fastq \
+	in2=./$1/QC_reads/${sample}_qualTrim_R2.fastq \
+	out=./$1/QC_reads/${sample}_deduped.fastq \
+	ac=f
+
+echo "De-interleaving deduplicated file."
+reformat.sh \
+	in=./$1/QC_reads/${sample}_deduped.fastq \
+	out1=./$1/QC_reads/${sample}_deduplicated_R1.fastq \
+	out2=./$1/QC_reads/${sample}_deduplicated_R2.fastq 
 
 #----- Count QC'd Reads -----#
 
 echo "Counting total reads."
-read1_total_reads=$(cat ./$1/QC_reads/${sample}_qualTrim_R1.fastq | echo $((`wc -l`/4)))
-read2_total_reads=$(cat ./$1/QC_reads/${sample}_qualTrim_R2.fastq | echo $((`wc -l`/4)))
+read1_total_reads=$(cat ./$1/QC_reads/${sample}_deduplicated_R1.fastq | echo $((`wc -l`/4)))
+read2_total_reads=$(cat ./$1/QC_reads/${sample}_deduplicated_R2.fastq | echo $((`wc -l`/4)))
 sample_total_reads=$((read1_total_reads + read2_total_reads))
 
 #----- FastQC QC'd Reads -----#
 
-fastqc ./$1/QC_reads/${sample}_qualTrim_R1.fastq \
-	./$1/QC_reads/${sample}_qualTrim_R2.fastq \
+echo "Running fastQC."
+fastqc \
+	./$1/QC_reads/${sample}_deduplicated_R1.fastq \
+	./$1/QC_reads/${sample}_deduplicated_R2.fastq \
 	-o ./$1/QC_reads/fastQC
 
 #----- Align to CR6 with Bowtie2 -----#
@@ -83,8 +100,8 @@ bowtie2 \
 	--time \
 	--no-unal \
 	-x ~/mnv_genomes_11.20.18/Mod_CR6 \
-	-1 ./$1/QC_reads/${sample}_qualTrim_R1.fastq \
-	-2 ./$1/QC_reads/${sample}_qualTrim_R2.fastq \
+	-1 ./$1/QC_reads/${sample}_deduplicated_R1.fastq \
+	-2 ./$1/QC_reads/${sample}_deduplicated_R2.fastq \
 	-S ./$1/alignment_files/${sample}_alignment.sam &> ./$1/alignment_files/${sample}_alignment.log
 
 #----- Convert, Sort, Index Alignment Files -----#
@@ -104,13 +121,17 @@ bedtools genomecov -bga \
 echo "Counting primary alignments."
 
 # Count the number of primary alignments from the sorted bam file
-# Dividing this number by sample_total_reads will yield percent MNV
-sample_primary_alignments=$(samtools view -F 0x4 ./$1/alignment_files/${sample}_sorted.bam | \
-	cut -f 1 | sort | uniq | wc -l)
+# Will need to add left mate mapped and right mate mapped, then
+# dividing this sum by sample_total_reads will yield percent MNV
+left_mate_mapped=$(samtools view -f 0x40 -F 0x4 ./$1/alignment_files/${sample}_sorted.bam | \
+	cut -f1 | sort | uniq | wc -l)
+right_mate_mapped=$(samtools view -f 0x80 -F 0x4 ./$1/alignment_files/${sample}_sorted.bam | \
+	cut -f1 | sort | uniq | wc -l) 
 
 # Send this information to a new text file
-echo -e ${sample}"\t"${sample_total_reads}"\t"${sample_primary_alignments} > \
+echo -e ${sample}"\t"${sample_total_reads}"\t"${left_mate_mapped}"\t"${right_mate_mapped} > \
 	./$1/sample_data/alignment_data/${sample}_alignCounts.txt
+
 #----- Call Variants -----#
 
 # calling variants relative to Modified_CR6.fas
@@ -122,7 +143,7 @@ echo "Calling variants."
 bcftools mpileup \
 	-f ~/mnv_genomes_11.20.18/Modified_CR6.fas \
 	./$1/alignment_files/${sample}_sorted.bam \
-	--annotate AD | \
+	--annotate AD,DP | \
 	bcftools call -m --variants-only > ./$1/variants/${sample}_variants.vcf
 
 # Calculate the average depth of coverage

@@ -22,7 +22,9 @@ ui <- tagList(
                        choices = c("baldridge_rumspringa", 
                                    "Combined_Data",
                                    "170406_M00990_PreB_SIC",
-                                   "170406_M02789_PostB_SIC")),
+                                   "170406_M02789_PostB_SIC",
+                                   "170307_M03700_SIC",
+                                   "170314_M03700_SIC")),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     
@@ -381,18 +383,3 @@ server <- function(input, output, session) {
 }
 
 shinyApp(ui = ui, server = server)
-
-
-
-# test loop
-#testVector <- c("Baldridge_1", "Baldridge_2")
-#listOfTracks <- map(testVector, PlotCoverage, dataSet = "craig_mnv")
-
-#testFunction <- function(track_list) {
-#  for (i in 1:length(track_list)) {
-#    plotTracks(trackList = list(track_list[[i]][[1]],
-#                                track_list[[i]][[2]]))
-#  }
-#}
-
-#plotTest <- testFunction(listOfTracks)

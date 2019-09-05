@@ -5,12 +5,12 @@
 
 load("ORF_Data.RData")
 
-library("dplyr")
 library("stringr")
 library("data.table")
+library("tidyverse")
 
 # Find correct files, store and loop
-dataSet <- "baldridge_rumspringa"
+  dataSet <- "170307_M03700_SIC"
 rawVCFFilePath <- paste0("../", dataSet, "/variants")
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")

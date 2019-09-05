@@ -111,12 +111,12 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
 
 # Alignment Count Data #
 GenerateSampleData <- function(dataSet) {
-  
+
   # Read in sample alignment count data, calculate percent MNV
   readCounts <- read.delim(paste0("../", dataSet, "/alignment_counts.txt"),
-                           colClasses = c("character", "numeric", "numeric"))
+                           colClasses = c("character", "numeric", "numeric", "numeric"))
   readCounts <- readCounts %>%
-    mutate("percent_MNV" = round(100*(primary_alignments/total_reads), 
+    mutate("percent_MNV" = round(100*((left_alignments + right_alignments)/total_reads), 
                                  digits = 2))
   
   # Genome Coverage Data #
@@ -157,9 +157,9 @@ GenerateSampleData <- function(dataSet) {
   # Try to Merge Metadata #
   # Add the average genome coverage numbers to the readCounts data
   sampleData <- readCounts %>%
-    dplyr::mutate("avg_genome_cov" = genomeCovVec[sample])
-  names(sampleData) <- c("Sample", "Total Reads", "Primary Alignments", 
-                         "% MNV", "Average Coverage")
+    dplyr::mutate("avg_genome_cov" = genomeCovVec[sample]) %>%
+    dplyr::select(sample, total_reads, percent_MNV, avg_genome_cov)
+  names(sampleData) <- c("Sample", "Total Reads", "% MNV", "Average Coverage")
   sampleData$Sample <- as.character(sampleData$Sample)
   
   # Do we need to add metadata?

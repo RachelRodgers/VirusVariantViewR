@@ -13,6 +13,8 @@ The full pipeline consists of several steps prior to interaction with the applic
 	4. variant calling with bcftools mpileup and bcftools calling
 	5. generation of additional information of interest including calculating average coverage and number of primary alignments per sample.
 	
+These scripts will generate a specific directory structure that should be preserved when running the mutation annotation R script and the Shiny app.
+	
 2. Annotation of the mutations contained in each VCF file with the script **Annotate_Mutations.R**.  These annotated files are required for the shiny application.
 	
 3. Generation of "Mod_CR6_ORF_Information.RData" required for the shiny application with the script **Mod_CR6_ORF_Information.R**. 

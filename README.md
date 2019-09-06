@@ -7,7 +7,7 @@ The full pipeline consists of several steps prior to interaction with the applic
 The recommended directory structure is a parent directory containing the following subdirectories:
 * parent_directory/VirusVariantViewR/ (scripts found in this repository)
 * parent_directory/Mod_CR6_ORFs/
-* subdirectory for each data set to be run through the VariantViewR pipeline scripts (step 1 below) with the raw fastq data residing within a raw_data/ subdirectory (ie: parent_dir/study_directory/raw_samples).  Additional subdirectories will be added to the study_directory/ when running the pipeline scripts.
+* subdirectory for each data set to be run through the VariantViewR pipeline scripts (step 1 below) with the raw fastq data residing within a raw_data/ subdirectory (ie: your_parent_dir/your_study_directory/raw_samples).  Additional subdirectories will be added to your_study_directory/ when running the pipeline scripts.
 
 ## Data Preparation 
 
@@ -20,14 +20,12 @@ The recommended directory structure is a parent directory containing the followi
 	
 These scripts will generate a specific directory structure that should be preserved when running the mutation annotation R script and the Shiny app:
 
-study_directory/
-	alignment_files/
-	QC_reads/
-	raw_data/ (user-generated)
-	sample_data/
-	variants/
-	alignment_counts.txt
-	
+* your_study_directory/alignment_files/
+* your_study_directory/QC_reads/
+* your_study_directory/raw_data/ (user-generated)
+* your_study_directory/sample_data/
+* your_study_directory/variants/
+* your_study_directory/alignment_counts.txt
 
 2. **Mod_CR6_ORF_Information.R** reads files found in the Mod_CR6_ORFs/ directory and writes the R data object "Mod_CR6_ORF_Data.RData."  Please ensure the Mod_CR6_ORFs/ directory is one level above the script, or modify the path to these files as needed. The generated R data object is then read into the script **Annotation_Mutations.R**.
 	

@@ -99,7 +99,7 @@ echo "Aligning to CR6."
 bowtie2 \
 	--time \
 	--no-unal \
-	-x ~/mnv_genomes_11.20.18/Mod_CR6 \
+	-x ~/mnv_genomes_181120/Mod_CR6 \
 	-1 ./$1/QC_reads/${sample}_deduplicated_R1.fastq \
 	-2 ./$1/QC_reads/${sample}_deduplicated_R2.fastq \
 	-S ./$1/alignment_files/${sample}_alignment.sam &> ./$1/alignment_files/${sample}_alignment.log

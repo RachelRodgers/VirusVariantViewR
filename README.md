@@ -14,7 +14,7 @@ The recommended directory structure is a parent directory containing the followi
 1. **VariantViewR_run_pipeline.sh** (which calls **VariantViewR_array.sbatch**) processes raw sequencing data and generates VCF files.  This pipeline consists of the following steps:
 	1. adapter and quality trimming
 	2. deduplication to remove exact (PCR) duplicates
-	3. alignment to CR6 reference genome with bowtie2
+	3. alignment to CR6 reference genome with bowtie2 (requires bt2-indexed reference genome; CR6 reference genome contained in the file /Mod_CR6_ORFs/"Mod_CR6_FullGenome.txt")
 	4. variant calling with bcftools mpileup and bcftools calling
 	5. generation of additional information of interest including calculating average coverage and number of primary alignments per sample.
 	

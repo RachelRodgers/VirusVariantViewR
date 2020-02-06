@@ -1,11 +1,11 @@
 #!/bin/bash
 
-# VariantViewR_array.sbatch
+# VariantViewR_CW3_array.sbatch
 
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=50G
-#SBATCH --array=1-33%10
-#SBATCH -J Variant_ViewR_array
+#SBATCH --array=1-12
+#SBATCH -J CW3_Variant_ViewR_array
 #SBATCH --mail-user=rachel.rodgers
 #SBATCH --mail-type=ALL
 
@@ -32,9 +32,8 @@ read1=$(sed -n ${SLURM_ARRAY_TASK_ID}p $1_lookup.txt)
 read2=$(echo ${read1} | sed s/R1/R2/g)
 
 # From the read1 file, get the short sample identifier
-sample=$(echo ${read1} | cut -d'_' -f 1-2)
-#sample=$(echo ${read1} | cut -d'_' -f 1-3)
-#sample=$(echo ${read1} | cut -d'_' -f 1)
+#sample=$(echo ${read1} | sed s/_R1.fastq.gz//g)
+sample=$(echo ${read1} | cut -d'_' -f 1-4)
 
 echo "Working on ${sample}."
 
@@ -62,7 +61,7 @@ bbduk.sh \
 #----- Deduplication -----#
 
 echo "Removing exact duplicates."
-dedudupe.sh \
+dedupe.sh \
 	in1=./$1/QC_reads/${sample}_qualTrim_R1.fastq \
 	in2=./$1/QC_reads/${sample}_qualTrim_R2.fastq \
 	out=./$1/QC_reads/${sample}_deduped.fastq \
@@ -89,9 +88,9 @@ fastqc \
 	./$1/QC_reads/${sample}_deduplicated_R2.fastq \
 	-o ./$1/QC_reads/fastQC
 
-#----- Align to CR6 with Bowtie2 -----#
+#----- Align to CW3 with Bowtie2 -----#
 
-echo "Aligning to CR6."
+echo "Aligning to CW3."
 
 # Note - not writing out any unaligned sequences.
 # samtools flagstat on sorted bam output will count only mapped reads!
@@ -99,7 +98,7 @@ echo "Aligning to CR6."
 bowtie2 \
 	--time \
 	--no-unal \
-	-x ~/mnv_genomes_181120/Mod_CR6 \
+	-x ~/mnv_genomes_181120/CW3 \
 	-1 ./$1/QC_reads/${sample}_deduplicated_R1.fastq \
 	-2 ./$1/QC_reads/${sample}_deduplicated_R2.fastq \
 	-S ./$1/alignment_files/${sample}_alignment.sam &> ./$1/alignment_files/${sample}_alignment.log
@@ -134,17 +133,19 @@ echo -e ${sample}"\t"${sample_total_reads}"\t"${left_mate_mapped}"\t"${right_mat
 
 #----- Call Variants -----#
 
-# calling variants relative to Modified_CR6.fas
+# calling variants relative to CW3_sequence.fasta
 
 echo "Calling variants."
 
 # --annotate AD adds (unfiltered) allelic depth - ie: number of reads supporting each allele - to output VCF file
 
 bcftools mpileup \
-	-f ~/mnv_genomes_11.20.18/Modified_CR6.fas \
+	-Ou \
+	--max-depth 100000 \
+	-f ~/mnv_genomes_181120/CW3_EF014462.1_FullGenome.fasta \
 	./$1/alignment_files/${sample}_sorted.bam \
 	--annotate AD,DP | \
-	bcftools call -m --variants-only > ./$1/variants/${sample}_variants.vcf
+	bcftools call -mP 0.99 --ploidy 1 --variants-only > ./$1/variants/${sample}_variants.vcf
 
 # Calculate the average depth of coverage
 bedtools genomecov -ibam \

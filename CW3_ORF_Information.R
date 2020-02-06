@@ -1,4 +1,4 @@
-# Mod_CR6_ORF_Information.R
+# CW3_ORF_Information.R
 
 # Generate codon classes and look-up-tables for each ORF in ModCR6.
 
@@ -114,10 +114,32 @@ PopulateCodonClasses <- function(orfFile, orfName, orfStart, orfEnd) {
 
 #----- Generate ORF Codon Classes -----#
 
+# ~ Read in ORFs from Full Genome ~ #
+# Using the same ORF nucleotide positions as for Modified CR6.
+fullGenome <- readr::read_file("./CW3_ORFs/CW3_EF014462.1_FullGenome.txt")
+fullGenomeNoBreaks <- str_remove_all(fullGenome, pattern = "\\n")
+
+orfSequences <- pmap(.l = list(start = list("ORF1" = 6, 
+                                            "ORF2" = 5056,
+                                            "ORF3" = 6681,
+                                            "ORF4" = 5069),
+                               stop = list("ORF1" = 5069,
+                                         "ORF2" = 6681,
+                                         "ORF3" = 7307,
+                                         "ORF4" = 5707)),
+                     .f = base::substr,
+                     x = fullGenomeNoBreaks)
+
+# save individual ORF sequences
+paths <- paste0("./CW3_ORFs/CW3_", names(orfSequences), "_nt.txt")
+walk2(.x = orfSequences, .y = paths, 
+      .f = ~ (write(x = .x, file = .y)),
+      sep = "\t")
+
 # ~ ORF1 ~ #
 # Positions: 6 - 5069
 # Length: 5064 nt | 1687 aa
-orf1CodonClassList <- PopulateCodonClasses(orfFile = "./Mod_CR6_ORFs/Mod_CR6_ORF1_nt.txt",
+orf1CodonClassList <- PopulateCodonClasses(orfFile = "./CW3_ORFs/CW3_ORF1_nt.txt",
                                            orfName = "ORF1",
                                            orfStart = 6, orfEnd = 5069)
 
@@ -134,7 +156,7 @@ orf1 <- new("ORF",
 # ~ ORF2 ~ #
 # Positions 5056 - 6681
 # Length: 1626 nt | 541 aa
-orf2CodonClassList <- PopulateCodonClasses(orfFile = "./Mod_CR6_ORFs/Mod_CR6_ORF2_nt.txt",
+orf2CodonClassList <- PopulateCodonClasses(orfFile = "./CW3_ORFs/CW3_ORF2_nt.txt",
                                            orfName = "ORF2",
                                            orfStart = 5056, orfEnd = 6681)
 orf2CodonLUT <- rep(names(x = orf2CodonClassList), each = 3)
@@ -149,7 +171,7 @@ orf2 <- new("ORF",
 # ~ ORF3 ~ #
 # Positions: 6681 - 7307
 # Length: 627 nt | 209 aa
-orf3CodonClassList <- PopulateCodonClasses(orfFile = "./Mod_CR6_ORFs/Mod_CR6_ORF3_nt.txt",
+orf3CodonClassList <- PopulateCodonClasses(orfFile = "./CW3_ORFs/CW3_ORF3_nt.txt",
                                            orfName = "ORF3",
                                            orfStart = 6681, orfEnd = 7307)
 
@@ -165,15 +187,9 @@ orf3 <- new("ORF",
 # ~ ORF4 ~ #
 # Positions: 5069 - 5707
 # Length: 639 nt | 213 aa
-# Sequence for ORF4 will be extracted from ModCR6 genome (taken from Mod_CR6.fasta file)
-#   since it's not available online.
-fullGenome <- readr::read_file("./Mod_CR6_ORFs/Mod_CR6_FullGenome.txt")
-fullGenomeNoBreaks <- str_remove_all(fullGenome, pattern = "\\n")
-ORF4 <- base::substr(fullGenomeNoBreaks, start = 5069, stop = 5707)
-# save
-write(ORF4, "./Mod_CR6_ORFs/Mod_CR6_ORF4_nt.txt", sep = "\t")
+
 # Make class list and LUT
-orf4CodonClassList <- PopulateCodonClasses(orfFile = "./Mod_CR6_ORFs/Mod_CR6_ORF4_nt.txt",
+orf4CodonClassList <- PopulateCodonClasses(orfFile = "./CW3_ORFs/CW3_ORF4_nt.txt",
                                            orfName = "ORF4",
                                            orfStart = 5069, orfEnd = 5707)
 orf4CodonLUT <- rep(names(x = orf4CodonClassList), each = 3)
@@ -190,6 +206,6 @@ orfList <- list("orf1" = orf1, "orf2" = orf2, "orf3" = orf3, "orf4" = orf4)
 # Biostrings AMINO_ACID_CODE with Stop Codon Added
 aminoAcidCode <- c(Biostrings::AMINO_ACID_CODE, "*" = "*")
 
-save.image("Mod_CR6_ORF_Information.RData")
+save.image("CW3_ORF_Information.RData")
 
-save(orfList, aminoAcidCode, file = "CR6_ORF_Data.RData")
+save(orfList, aminoAcidCode, file = "CW3_ORF_Data.RData")

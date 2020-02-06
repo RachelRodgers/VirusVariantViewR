@@ -19,12 +19,12 @@ ui <- tagList(
     tabPanel(title = "Data Set Selection",
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
-                       choices = c("baldridge_rumspringa", 
-                                   "Combined_Data",
-                                   "170406_M00990_PreB_SIC",
-                                   "170406_M02789_PostB_SIC",
-                                   "170307_M03700_SIC",
-                                   "170314_M03700_SIC")),
+                       choices = c("Combined_Data",
+                                   "orchard_CR6",
+                                   "orchard_CR6_grouped",
+                                   "orchard_CW3",
+                                   "orchard_CW3_grouped"
+                                   )),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     

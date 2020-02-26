@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# VariantViewR_CW3_run_pipeline.sh
+# VariantViewR_run_pipeline.sh
 
 # Call with one positional argument which will be a prefix for the current study.
 # bash VariantViewR_run_pipeline.sh prefix
@@ -16,7 +16,7 @@ echo "Writing lookup file"
 find $1/raw_data/ -name "*R1*" -exec basename {} \; > $1_lookup.txt
 
 echo "Running array job"
-sbatch --wait ./VariantViewR_CW3_array.sbatch $1
+sbatch --wait ./VariantViewR_array.sbatch $1
 
 echo "Concatenating alignment counts info"
 # Concatenate a tab-delim header with the output of all the ./sample_data/alignment_data/*_alignCounts.txt

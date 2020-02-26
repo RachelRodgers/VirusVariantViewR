@@ -20,10 +20,10 @@ ui <- tagList(
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
                        choices = c("Combined_Data",
-                                   "orchard_CR6",
-                                   "orchard_CR6_grouped",
-                                   "orchard_CW3",
-                                   "orchard_CW3_grouped"
+                                   "orchard_CR6_haploid",
+                                   "orchard_CR6_grouped_haploid",
+                                   "orchard_CW3_haploid",
+                                   "orchard_CW3_grouped_haploid"
                                    )),
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),

@@ -22,7 +22,7 @@ ui <- tagList(
                        choices = c("Combined_Data",
                                    "orchard_CW3_pooled",
                                    "orchard_CR6_pooled")),
-           
+
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
     

@@ -19,10 +19,7 @@ module load bcftools
 module load fastqc
 module load bedtools
 module load lofreq
-
-# ref genome path
-refPath=~/mnv_genomes_181120/Modified_CR6.fas # Mod CR6
-#refPath=~/mnv_genomes_181120/CW3_EF014462.1_FullGenome.fasta # CW3
+=======
 
 # Make directories if needed
 mkdir -p ./$1/QC_reads/fastQC
@@ -141,9 +138,7 @@ echo -e ${sample}"\t"${sample_total_reads}"\t"${left_mate_mapped}"\t"${right_mat
 	./$1/sample_data/alignment_data/${sample}_alignCounts.txt
 
 #----- Call Variants -----#
-
 # calling variants relative to genome in refPath
-
 echo "Calling variants."
 
 # --annotate AD adds (unfiltered) allelic depth - ie: number of reads supporting each allele - to output VCF file

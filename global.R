@@ -39,7 +39,7 @@ setClass("Variant",
 
 # Returns a list of Sample objects, each of which contains a list of
 #   Variant objects.
-#dataSetSelect <- "ls_ee_mnv_190403"
+#dataSetSelect <- "orchard_CW3_pooled"
 #testDataSet <- GenerateSampleData(dataSetSelect) # used to make dataSetSamples
 #dataSetSamples <- as.character(testDataSet$Sample) # send to sampleVector
 
@@ -204,15 +204,20 @@ GetVCF <- function(dataSet, sample) {
   # Filter sampleAlignmentCounts by sample
   #samplePrimaryAlignments <- subset(GenerateSampleData,
                                     #sample == sample)$primary_alignments
-  
-  removeCols <- c("ID", "Filter", "Info", "Format", "Values")
-  # Remove add'l cols if VCF file not empty (these values won't be in empty vcf file)
+
+  # basic columns to display, even if VCF file is empty:
+  keepCols <- c("Reference Genome", "Position", "Reference",
+                "Alternative", "Quality")
+
+  # additional columns to display in cases where the VCF file is not empty:
   if (nrow(vcfFile) != 0) {
-    removeCols <- c(removeCols, "Ref_Reads", "Alt_Reads", "AD") 
+    keepCols <- c(keepCols, "Location", "Reference Codon", "Reference Protein", 
+                  "Mutant Codon", "Mutant Protein", "Mutation Type", "Total Depth",
+                  "Allelic Frequency (%)") 
   }
 
   vcfFileFormatted <- vcfFile %>%
-    select(-c(removeCols))
+    select(keepCols)
   
   comment(vcfFileFormatted) <- sample
   

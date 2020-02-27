@@ -1,22 +1,24 @@
-# Annotate_CR6_Mutations.R
+# Annotate_Mutations.R
 
 # For each VCF file, annotate the reference and alternative mutations and add
 #   total depth information from the sample's bedGraph file.
 
 load("CR6_ORF_Data.RData")
+#load("CW3_ORF_Data.RData")
 
 library("stringr")
 library("data.table")
 library("tidyverse")
 
 # Find correct files, store and loop
-dataSet <- "orchard_CR6"
+dataSet <- "Combined_Data"
 rawVCFFilePath <- paste0("../", dataSet, "/variants")
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")
 dir.create(annotatedVCFDirectory)
 
 for (i in 1:length(rawVCFFiles)) {
+
   variantSample <- rawVCFFiles[i]
   variantSampleName <- str_remove(string = basename(variantSample),
                                   pattern = "\\.vcf")
@@ -43,13 +45,27 @@ for (i in 1:length(rawVCFFiles)) {
                "Values" = character(0))
   })
   
-  vcfHeaders <- c("Reference Genome", "Position", 
-                  "ID", "Reference", "Alternative",
-                  "Quality", "Filter", "Info", "Format", "Values")
+  vcfHeaders <- NULL
+  variantTool <- NULL # flag for later logic
+  
+  if (ncol(vcfFile) == 10) { # if VCF written by bcftools
+    vcfHeaders <- c("Reference Genome", "Position",
+                    "ID", "Reference", "Alternative",
+                    "Quality", "Filter", "Info", "Format", "Values")
+    variantTool <- "bcftools"
+  } else if (ncol(vcfFile) == 8) { # if VCF written by lofreq
+    vcfHeaders <- c("Reference Genome", "Position",
+                          "ID", "Reference", "Alternative",
+                          "Quality", "Filter", "Info")
+    variantTool <- "lofreq"
+  } else { # something is screwed up
+    stop("Raw VCF file has the wrong number of columns.", call. = FALSE)
+  }
+  
   names(vcfFile) <- vcfHeaders
   
-  # If VCF file isn't empty, add a column for Reference Protein, Alternative Protein,
-  #   and Mutation Type
+  # If VCF file isn't empty, append columns for ORF/Protein Location, 
+  #   Reference Protein, Alternative Protein, and Mutation Type
   if (nrow(vcfFile) == 0) {
     write.table(x = vcfFile,
                 file = paste(annotatedVCFDirectory, "/",
@@ -158,12 +174,13 @@ for (i in 1:length(rawVCFFiles)) {
       vcfFileAnnotated[j, "Mutation Type"] <- paste(mutationTypeVec, collapse = "; ")
     }
     
-    # Add Total Depth information ere, then write out (see find_range_exp.R)
+    # Add Total Depth information here, then write out (see find_range_exp.R)
     # Get sample Name
     sampleName <- str_remove(variantSampleName, "_variants")
     # read in bedgraphDT
     bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/",
                                sampleName, "_sorted.bedGraph"),
+                        sep = "\t",
                         col.names = c("chromosome", "start", "end", "value"),
                         colClasses = c("character", "integer", "integer", "character"))
     # generate coverage map
@@ -190,23 +207,35 @@ for (i in 1:length(rawVCFFiles)) {
       vcfFileAnnotated[j, "Total Depth"] <- GetCoverageAtPosition(position = currentPosition)
     }
     
-    # Calculate Allelic Depth
-    
-    # The AD value is given as ##,## and is the last key-value element in the
-    #   Value column of the vcf file.  The leading ## represents the number of
-    #   reads supporting the reference allele, while the second ## represents
-    #   the number of reads supporting the alternative allele.  Dividing
-    #   the alt reads by (alt + ref reads) should yield the allelic frequency.
-    
-    vcfFileAnnotated <- vcfFileAnnotated %>% 
-      mutate("AD" = map_chr(.x = str_split(Values, pattern = ":"), .f = tail, n = 1),
-             "Ref_Reads" = map_chr(.x = str_split(AD, pattern = ","), .f = head, n = 1),
-             "Alt_Reads" = map_chr(.x = str_split(AD, pattern = ","), .f = tail, n = 1),
-             "Allelic Frequencey (%)" = ifelse(Ref_Reads == "0",
-                                               yes = "100",
-                                               no = 
-                                                 round(100 * (as.numeric(Alt_Reads)/(as.numeric(Ref_Reads) + as.numeric(Alt_Reads))),
-                                                       digits = 2)))
+    if (variantTool == "bcftools") {
+      # Calculate Allelic Depth (for VCF files written by bcftools):
+      # The AD value is given as ##,## and is the last key-value element in the
+      #   Value column of the vcf file.  The leading ## represents the number of
+      #   reads supporting the reference allele, while the second ## represents
+      #   the number of reads supporting the alternative allele.  Dividing
+      #   the alt reads by (alt + ref reads) should yield the allelic frequency.
+      
+      vcfFileAnnotated <- vcfFileAnnotated %>% 
+        mutate("AD" = map_chr(.x = str_split(Values, pattern = ":"), .f = tail, n = 1),
+               "Ref_Reads" = map_chr(.x = str_split(AD, pattern = ","), .f = head, n = 1),
+               "Alt_Reads" = map_chr(.x = str_split(AD, pattern = ","), .f = tail, n = 1),
+               "Allelic Frequency (%)" = ifelse(Ref_Reads == "0",
+                                                 yes = "100",
+                                                 no = 
+                                                   round(100 * (as.numeric(Alt_Reads)/(as.numeric(Ref_Reads) + as.numeric(Alt_Reads))),
+                                                         digits = 2)))
+      
+    } else if (variantTool == "lofreq") {
+      # Retrieve Allelic Frequency (for VCF files written by lofreq):
+      # The AF value is the second semi-colon delimited field in the INFO column
+
+      vcfFileAnnotated <- vcfFileAnnotated %>% 
+        mutate("AF" = map_chr(str_split(Info, ";"),
+                              ~ .x[[2]]),
+               "AF" = str_remove(AF, pattern = "^AF="),
+               "Allelic Frequency (%)" = round(100 * as.numeric(AF), digits = 2))
+        
+    }
     
     # write the file out
     write.table(x = vcfFileAnnotated,

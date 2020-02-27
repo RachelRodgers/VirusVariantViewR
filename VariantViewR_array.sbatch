@@ -2,9 +2,9 @@
 
 # VariantViewR_array.sbatch
 
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=4
 #SBATCH --mem=50G
-#SBATCH --array=1-28
+#SBATCH --array=1-7
 #SBATCH -J Variant_ViewR_array
 #SBATCH --mail-user=rachel.rodgers
 #SBATCH --mail-type=ALL
@@ -19,7 +19,6 @@ module load bcftools
 module load fastqc
 module load bedtools
 module load lofreq
-=======
 
 # Make directories if needed
 mkdir -p ./$1/QC_reads/fastQC
@@ -40,6 +39,10 @@ sample=$(echo ${read1} | sed s/_R1.fastq.gz//g)
 # refPath to reference genome
 refPath=~/mnv_genomes_181120/Modified_CR6.fas # Mod CR6
 #refPath=~/mnv_genomes_181120/CW3_EF014462.1_FullGenome.fasta # CW3
+
+# alignPath
+alignPath=~/mnv_genomes_181120/Mod_CR6 # Mod CR6
+#alignPath=~/mnv_genomes_181120/CW3 # CW3
 
 echo "Working on ${sample}."
 
@@ -63,7 +66,7 @@ bbduk.sh \
 	out1=./$1/QC_reads/${sample}_qualTrim_R1.fastq \
 	out2=./$1/QC_reads/${sample}_qualTrim_R2.fastq \
 	qtrim=r trimq=25 minlength=75 &> ./$1/QC_reads/${sample}_qualityTrim.log
-	
+
 #----- Deduplication -----#
 
 echo "Removing exact duplicates."
@@ -77,7 +80,7 @@ echo "De-interleaving deduplicated file."
 reformat.sh \
 	in=./$1/QC_reads/${sample}_deduped.fastq \
 	out1=./$1/QC_reads/${sample}_deduplicated_R1.fastq \
-	out2=./$1/QC_reads/${sample}_deduplicated_R2.fastq 
+	out2=./$1/QC_reads/${sample}_deduplicated_R2.fastq
 
 #----- Count QC'd Reads -----#
 
@@ -96,7 +99,7 @@ fastqc \
 
 #----- Align to CR6 with Bowtie2 -----#
 
-echo "Aligning to CR6."
+echo "Aligning to ref genome."
 
 # Note - not writing out any unaligned sequences.
 # samtools flagstat on sorted bam output will count only mapped reads!
@@ -104,7 +107,7 @@ echo "Aligning to CR6."
 bowtie2 \
 	--time \
 	--no-unal \
-	-x ~/mnv_genomes_181120/Mod_CR6 \
+	-x $alignPath \
 	-1 ./$1/QC_reads/${sample}_deduplicated_R1.fastq \
 	-2 ./$1/QC_reads/${sample}_deduplicated_R2.fastq \
 	-S ./$1/alignment_files/${sample}_alignment.sam &> ./$1/alignment_files/${sample}_alignment.log
@@ -138,10 +141,10 @@ echo -e ${sample}"\t"${sample_total_reads}"\t"${left_mate_mapped}"\t"${right_mat
 	./$1/sample_data/alignment_data/${sample}_alignCounts.txt
 
 #----- Call Variants -----#
-# calling variants relative to genome in refPath
-echo "Calling variants."
 
-# --annotate AD adds (unfiltered) allelic depth - ie: number of reads supporting each allele - to output VCF file
+# calling variants relative to genome in refPath
+
+echo "Calling variants."
 
 # add indel quality to bam file for sample
 lofreq indelqual \
@@ -152,7 +155,7 @@ lofreq indelqual \
 
 # call variants
 lofreq call \
-	-f $ref \
+	-f $refPath \
 	-o ./$1/variants/${sample}_variants.vcf \
 	--call-indels \
 	./$1/alignment_files/${sample}_sorted_indelqual.bam

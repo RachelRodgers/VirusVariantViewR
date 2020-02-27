@@ -19,6 +19,7 @@ module load bcftools
 module load fastqc
 module load bedtools
 module load lofreq
+=======
 
 # Make directories if needed
 mkdir -p ./$1/QC_reads/fastQC
@@ -137,9 +138,7 @@ echo -e ${sample}"\t"${sample_total_reads}"\t"${left_mate_mapped}"\t"${right_mat
 	./$1/sample_data/alignment_data/${sample}_alignCounts.txt
 
 #----- Call Variants -----#
-
 # calling variants relative to genome in refPath
-
 echo "Calling variants."
 
 # --annotate AD adds (unfiltered) allelic depth - ie: number of reads supporting each allele - to output VCF file

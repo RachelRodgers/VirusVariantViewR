@@ -11,7 +11,7 @@ library("data.table")
 library("tidyverse")
 
 # Find correct files, store and loop
-dataSet <- "orchard_CR6_pooled"
+dataSet <- "Combined_Data"
 rawVCFFilePath <- paste0("../", dataSet, "/variants")
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")

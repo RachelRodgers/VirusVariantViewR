@@ -169,7 +169,7 @@ GenerateSampleData <- function(dataSet) {
   
   if (file.exists(metadataFile)) {
     
-    metadata <- read.delim(metadataFile)
+    metadata <- read.delim(metadataFile, check.names = FALSE)
     
     sampleDataExtended <- tryCatch({ # in case the Sample column isn't correct 
       merge(metadata, sampleData, by = "Sample")},

@@ -2,6 +2,9 @@
 
 source("./global.R")
 
+# Data set names from VirusVariantViewR_datasets.txt
+configDataSets <- readLines("VirusVariantViewR_datasets.txt", warn = FALSE)
+
 options(shiny.sanitize.errors = FALSE) # need to see the error
 options(ucscChromosomeNames = FALSE) # for Gvis
 
@@ -19,9 +22,7 @@ ui <- tagList(
     tabPanel(title = "Data Set Selection",
            selectInput(inputId = "dataSetSelect",
                        label = "Available Data Sets:",
-                       choices = c("Combined_Data",
-                                   "orchard_CW3_pooled",
-                                   "orchard_CR6_pooled")),
+                       choices = c(configDataSets)),
 
            actionButton(inputId = "go", label = "Go"),
            verbatimTextOutput("buttonValue")),
@@ -39,13 +40,13 @@ ui <- tagList(
                              icon("fas fa-stream"))),
            span(actionButton(inputId = "commonVariants", label = "Find Common Variants",
                              style = "margin-left:  10px",
-                             icon("far fa-list-alt"))),
-           h6("GetSampleVec()"),
-           p(verbatimTextOutput("verbatimOutput1")),
-           h6("_cells_selected()"),
-           p(verbatimTextOutput("verbatimOutput2")),
-           h6("SelectedSampleIndices() (filtered _cells_selected)"),
-           p(verbatimTextOutput("verbatimOutput3"))),
+                             icon("far fa-list-alt")))),
+           #h6("GetSampleVec()"),
+           #p(verbatimTextOutput("verbatimOutput1")),
+           #h6("_cells_selected()"),
+           #p(verbatimTextOutput("verbatimOutput2")),
+           #h6("SelectedSampleIndices() (filtered _cells_selected)"),
+           #p(verbatimTextOutput("verbatimOutput3"))),
     
     tabPanel(title = "Coverage", value = "coverageTab",
            textInput(inputId = "coverageTabInput", label = "Current Sample:"),

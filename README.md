@@ -10,6 +10,7 @@ The recommended directory structure is a parent directory containing the followi
 * parent_directory/Mod_CW3_ORFs/
 * subdirectory for each data set to be run through the VariantViewR pipeline scripts (step 1 below) with the raw fastq data residing within a raw_data/ subdirectory (ie: your_parent_dir/your_study_directory/raw_samples).  Additional subdirectories will be added to your_study_directory/ when running the pipeline scripts.
 * parent_directory/VirusVariantViewR_datasets.txt:  this is a single-column plain text file containing the name of the subdirectory for each data set that has been run through the VariantViewR pipeline scripts, and for which you want to visualize in the application.
+* parent_directory/<name_of_dataset>_ metadata.txt: a tab-delimited text file containing your sample names in column 1 (named "Sample") and an arbitary number of named columns with additional data of intereste for each sample.
 
 ## Data Preparation 
 

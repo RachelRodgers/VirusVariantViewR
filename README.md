@@ -1,5 +1,12 @@
 # VirusVariantViewR
 ------
+
+Please visit the VirusVariantViewR application:
+
+[https://baldridge-lab-wustl.shinyapps.io/]
+
+------
+
 VariantViewR consists of a data analysis pipeline and R Shiny application originally developed for the analysis of viral variant information (specifically, murine norovirus CR6 variants). The pipeline and application also work with murine norovirus CW3 variants.  The application continues to be modified and developed.
 
 The full pipeline consists of several steps prior to interaction with the application.

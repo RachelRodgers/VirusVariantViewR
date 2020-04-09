@@ -3,7 +3,7 @@
 
 Please visit the VirusVariantViewR application:
 
-[https://baldridge-lab-wustl.shinyapps.io/]
+https://baldridge-lab-wustl.shinyapps.io/
 
 ------
 

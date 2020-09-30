@@ -39,11 +39,11 @@ These scripts will generate a specific directory structure that should be preser
 
 2. **Mod_CR6_ORF_Information.R** (if comparing against CR6 genome) reads files found in the Mod_CR6_ORFs/ directory and writes the R data object "Mod_CR6_ORF_Data.RData."  Please ensure the Mod_CR6_ORFs/ directory is one level above the script, or modify the path to these files as needed. The generated R data object is then read into the script **Annotation_Mutations.R**.
 
-3. **Mod_CW3_ORF_Information.R** (if comparing against CW3 genome), same as step 2.
+4. **Mod_CW3_ORF_Information.R** (if comparing against CW3 genome), same as step 2.
 	
-3. **Annotate_Mutations.R** annotates each mutation contained the VCF files found in the study_directory/variants/ directory.  These annotated files are required for the shiny application.
+5. **Annotate_Mutations.R** annotates each mutation contained the VCF files found in the study_directory/variants/ directory.  These annotated files are required for the shiny application.
 	
 ## Data Display/Interaction with VariantViewR App
 
-4. Application requires **global.R** and **app.R**.  Application is launched from **app.R**.
+6. Application requires **global.R** and **app.R**.  Application is launched from **app.R**.
 

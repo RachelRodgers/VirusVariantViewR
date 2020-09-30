@@ -5,6 +5,7 @@ source("./global.R")
 # Data set names from VirusVariantViewR_datasets.txt
 configDataSets <- readLines("VirusVariantViewR_datasets.txt", warn = FALSE)
 
+options(repos = BiocManager::repositories()) # for deployment
 options(shiny.sanitize.errors = FALSE) # need to see the error
 options(ucscChromosomeNames = FALSE) # for Gvis
 
@@ -31,6 +32,9 @@ ui <- tagList(
              # checkbox for selecting/deselecting all
              #checkboxInput(inputId = "dt_sel", "sel/desel all"),
              #verbatimTextOutput(outputId = "selected_cells", TRUE),
+             h3("Select from the Sample column to view information:"),
+             br(),
+             br(),
            DT::dataTableOutput(outputId = "sampleDataTable"),
            actionButton(inputId = "inspVariants", 
                         label = "Inspect Variants",
@@ -40,13 +44,13 @@ ui <- tagList(
                              icon("fas fa-stream"))),
            span(actionButton(inputId = "commonVariants", label = "Find Common Variants",
                              style = "margin-left:  10px",
-                             icon("far fa-list-alt")))),
-           #h6("GetSampleVec()"),
-           #p(verbatimTextOutput("verbatimOutput1")),
-           #h6("_cells_selected()"),
-           #p(verbatimTextOutput("verbatimOutput2")),
-           #h6("SelectedSampleIndices() (filtered _cells_selected)"),
-           #p(verbatimTextOutput("verbatimOutput3"))),
+                             icon("far fa-list-alt"))),
+           h6("GetSampleVec()"),
+           p(verbatimTextOutput("verbatimOutput1")),
+           h6("_cells_selected()"),
+           p(verbatimTextOutput("verbatimOutput2")),
+           h6("SelectedSampleIndices() (filtered _cells_selected)"),
+           p(verbatimTextOutput("verbatimOutput3"))),
     
     tabPanel(title = "Coverage", value = "coverageTab",
            textInput(inputId = "coverageTabInput", label = "Current Sample:"),

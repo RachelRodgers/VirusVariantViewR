@@ -3,15 +3,15 @@
 # For each VCF file, annotate the reference and alternative mutations and add
 #   total depth information from the sample's bedGraph file.
 
-load("CR6_ORF_Data.RData")
-#load("CW3_ORF_Data.RData")
+#load("CR6_ORF_Data.RData")
+load("CW3_ORF_Data.RData")
 
 library("stringr")
 library("data.table")
 library("tidyverse")
 
 # Find correct files, store and loop
-dataSet <- "Combined_Data"
+dataSet <- "orchard_CW3_pooled"
 rawVCFFilePath <- paste0("../", dataSet, "/variants")
 rawVCFFiles <- list.files(rawVCFFilePath, pattern = ".vcf", full.names = TRUE)
 annotatedVCFDirectory <- file.path(rawVCFFilePath, "annotated_variants")

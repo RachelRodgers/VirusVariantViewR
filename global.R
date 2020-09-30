@@ -9,6 +9,7 @@ library("DT")
 library("Gviz")
 library("data.table")
 library("tidyverse")
+library("BiocManager")
 
 #----- Global variables -----#
 
@@ -113,7 +114,7 @@ BuildSampleObjects <- function(dataSet, sampleVector) {
 GenerateSampleData <- function(dataSet) {
 
   # Read in sample alignment count data, calculate percent MNV
-  readCounts <- read.delim(paste0("../", dataSet, "/alignment_counts.txt"),
+  readCounts <- read.delim(paste0("./", dataSet, "/alignment_counts.txt"),
                            colClasses = c("character", "numeric", "numeric", "numeric"))
   readCounts <- readCounts %>%
     mutate("percent_MNV" = round(100*((left_alignments + right_alignments)/total_reads), 
@@ -121,7 +122,7 @@ GenerateSampleData <- function(dataSet) {
   
   # Genome Coverage Data #
   # Read in genome coverage count data, calculate avg. genome coverage
-  rawFiles <- list.files(path = paste0("../", dataSet, "/sample_data/genome_coverage/"), 
+  rawFiles <- list.files(path = paste0("./", dataSet, "/sample_data/genome_coverage/"), 
                          pattern = "*_coverage.txt")
   
   # column names determined from documentation at 
@@ -137,7 +138,7 @@ GenerateSampleData <- function(dataSet) {
     currentFile <- rawFiles[i]
     currentFileName <- as.vector(strsplit(currentFile, "_coverage.txt")[[1]])
     
-    currentData <- read.delim(paste0("../", dataSet, 
+    currentData <- read.delim(paste0("./", dataSet, 
                                      "/sample_data/genome_coverage/", 
                                      currentFile), 
                               header = FALSE,
@@ -165,11 +166,12 @@ GenerateSampleData <- function(dataSet) {
   # Do we need to add metadata?
   #   Check for the existence of a metadata file.  If it exists, read-in,
   #   merge with the sample data and return.
-  metadataFile <- paste0("../", dataSet, "/", dataSet, "_metadata.txt")
+  metadataFile <- paste0("./", dataSet, "/", dataSet, "_metadata.txt")
   
   if (file.exists(metadataFile)) {
     
-    metadata <- read.delim(metadataFile, check.names = FALSE)
+    metadata <- read.delim(metadataFile, check.names = FALSE,
+                           colClasses = "character")
     
     sampleDataExtended <- tryCatch({ # in case the Sample column isn't correct 
       merge(metadata, sampleData, by = "Sample")},
@@ -190,7 +192,7 @@ GenerateSampleData <- function(dataSet) {
 
 GetVCF <- function(dataSet, sample) {
   # Read in and format VCF file for selected sample
-  vcfFile <- data.table::fread(file = paste0("../", dataSet, 
+  vcfFile <- data.table::fread(file = paste0("./", dataSet, 
                                              "/variants/annotated_variants/", 
                                              sample, "_variants_annotated.txt"),
                                header = TRUE, sep = "\t", 
@@ -237,7 +239,7 @@ PlotCoverage <- function(dataSet, sample, positions = NULL, widths = 1) {
   # Get the coverage file
   # Colnames taken from 
   # https://bedtools.readthedocs.io/en/latest/content/tools/genomecov.html
-  bedgraphDT <- fread(paste0("../", dataSet, "/alignment_files/", 
+  bedgraphDT <- fread(paste0("./", dataSet, "/alignment_files/", 
                              sample, "_sorted.bedGraph"),
                       col.names = c("chromosome", "start", "end", "value"))
 

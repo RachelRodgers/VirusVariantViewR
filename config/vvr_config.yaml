@@ -1,0 +1,28 @@
+---
+DataSetName: "small_test"
+
+Paths:
+  Reads: data
+  AlignPath: resources/mnv_genomes_181120/Mod_CR6
+
+Data:
+  RefGenomeName: "CR6" # currently, only options are CR6 or CW3
+  RefGenome: resources/mnv_genomes_181120/Modified_CR6.fas
+  Adapters: resources/contaminants_181120/Baldridge_nextera.fa
+
+Patterns:
+  Read1Identifiers: ["_R1"]
+  Read2Identifiers: ["_R2"]
+  ReadExtensions: [".fastq.gz"]
+
+Tools:
+  bbtools: bbtools/38.26
+  samtools: samtools/1.9
+  bowtie2: bowtie2/2.3.5-python-3.6.5
+  bcftools: bcftools/1.9
+  bedtools: bedtools/2.27.1
+  lofreq: lofreq/2.1.4
+  R: r/3.6.3-python-3.6.5-java-11
+ 
+System:
+  JavaMem: -Xmx48g

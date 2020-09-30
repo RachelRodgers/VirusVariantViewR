@@ -1,0 +1,274 @@
+"""
+Snakefile for running the VariantViewR pipeline
+
+Rachel Rodgers, Sep 2020
+"""
+
+import os
+import sys
+
+sys.path.append("./workflow/scripts/snakemake_helpers")
+
+from snakemake_helpers import *
+
+#----- Snakemake Set Up -----#
+
+configfile: "./config/vvr_config.yaml"
+
+# Dataset Name
+dataSet = config["DataSetName"]
+
+# Write out Dataset name for R:
+if not os.path.exists("results"):
+	os.makedirs("results")
+
+dataSetNameForR = open("./results/dataSet.txt", "w")
+dataSetNameForR.write(dataSet)
+dataSetNameForR.close()
+
+# Tools
+bbtools = config["Tools"]["bbtools"]
+samtools = config["Tools"]["samtools"]
+bowtie2 = config["Tools"]["bowtie2"]
+bcftools = config["Tools"]["bcftools"]
+bedtools = config["Tools"]["bedtools"]
+lofreq = config["Tools"]["lofreq"]
+R = config["Tools"]["R"]
+
+# Reference & Data File Paths
+refPath = config["Data"]["RefGenome"]
+alignPath = config["Paths"]["AlignPath"]
+adapters = config["Data"]["Adapters"]
+
+# Write out reference genome R Data:
+refGenomeName = config["Data"]["RefGenomeName"]
+refGenomeRData = open("./results/refGenomeRData.txt", "w")
+
+if refGenomeName == "CW3":
+	refGenomeRData.write("CW3_ORF_Data.RData")
+elif refGenomeName == "CR6":
+	refGenomeRData.write("CR6_ORF_Data.RData")
+else: # stop here
+	sys.exit("invalid reference genome name")
+
+refGenomeRData.close()
+
+# System
+XMX = config["System"]["JavaMem"]
+
+#----- Rename input files -----#
+
+rename_files(config)
+
+# Pull sample names and store in list
+READDIR = config["Paths"]["Reads"]
+
+SAMPLES, = glob_wildcards(os.path.join(READDIR, "renamed", "{sample}_R1.fastq.gz"))
+
+PATTERN_R1 = "{sample}_R1"
+PATTERN_R2 = "{sample}_R2"
+
+#----- Snakemake Workflow -----#
+
+rule all:
+	input:
+		expand(os.path.join("results", dataSet, "sample_data", "genome_coverage", "{sample}_coverage.txt"), sample = SAMPLES),
+		os.path.join("results", dataSet, "alignment_counts.txt"),
+		expand(os.path.join("results", dataSet, "variants", "annotated_variants", "{sample}_variants_annotated.txt"), sample = SAMPLES)
+
+
+rule trim_adapters:
+	input:
+		r1 = os.path.join(READDIR + "/renamed/", PATTERN_R1 + ".fastq.gz"),
+		r2 = os.path.join(READDIR + "/renamed/", PATTERN_R2 + ".fastq.gz"),
+		ref = adapters
+	output:
+		r1 = os.path.join("results", dataSet, "QC_reads", "{sample}_adaptTrim_R1.fastq"),
+		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_adaptTrim_R2.fastq")
+	shell:
+		"""
+		ml bbtools
+		bbduk.sh \
+			in1={input.r1} in2={input.r2} out1={output.r1} out2={output.r2} \
+			ref=adapters \
+			ktrim=r k=23 mink=11 hdist=1 \
+			tpe tbo \
+			{XMX}
+		"""
+
+rule quality_trimming:
+	input:
+		r1 = os.path.join("results", dataSet, "QC_reads", "{sample}_adaptTrim_R1.fastq"),
+		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_adaptTrim_R2.fastq")
+	output:
+		r1 = os.path.join("results", dataSet, "QC_reads", "{sample}_qualTrim_R1.fastq"),
+		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_qualTrim_R2.fastq")
+	shell:
+		"""
+		ml bbtools
+		bbduk.sh \
+			in1={input.r1} in2={input.r2} out1={output.r1} out2={output.r2} \
+			qtrim=r trimq=25 minlength=75 \
+			{XMX}
+		"""
+
+rule deduplicate:
+	input:
+		r1 = os.path.join("results", dataSet, "QC_reads", "{sample}_qualTrim_R1.fastq"),
+		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_qualTrim_R2.fastq")
+	output:
+		os.path.join("results", dataSet, "QC_reads", "{sample}_deduped.fastq")
+	shell:
+		"""
+		ml bbtools
+		dedupe.sh \
+			in1={input.r1} in2={input.r2} out={output} \
+			ac=f \
+			{XMX}
+		"""
+
+rule deinterleave:
+	input:
+		os.path.join("results", dataSet, "QC_reads", "{sample}_deduped.fastq")
+	output:
+		r1 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R1.fastq"),
+		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R2.fastq")
+	shell:
+		"""
+		ml bbtools
+		reformat.sh in={input} out1={output.r1} out2={output.r2} {XMX}
+		"""
+
+rule align_to_ref_genome:
+	input:
+		r1 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R1.fastq"),
+		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R2.fastq")
+	params:
+		ref = alignPath
+	output:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_alignment.sam")
+	shell:
+		"""
+		ml bowtie2
+		bowtie2 \
+			--no-unal -x {params.ref} \
+			-1 {input.r1} -2 {input.r2} -S {output}
+		"""
+
+rule samtools_view:
+	input:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_alignment.sam")
+	output:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_alignment.bam")
+	threads: 8
+	shell:
+		"""
+		ml samtools
+		samtools view -S -b {input} > {output} -@ {threads}
+		"""
+
+rule samtools_sort:
+	input:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_alignment.bam")
+	output:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam")
+	threads: 8
+	shell:
+		"""
+		ml samtools
+		samtools sort {input} -o {output} -@ {threads}
+		"""
+
+rule samtools_index:
+	input:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam")
+	output:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam.bai")
+	shell:
+		"""
+		ml samtools
+		samtools index {input} {output} -@ {threads}
+		"""
+
+rule genomecov:
+	input:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam")
+	output:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bedGraph")
+	shell:
+		"""
+		ml bedtools
+		bedtools genomecov -bga -ibam {input} > {output}
+		""" 
+
+rule add_indel_quality:
+	input:
+		bam = os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam")
+	params:
+		ref = refPath
+	output:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted_indelqual.bam")
+	shell:
+		"""
+		ml lofreq
+		lofreq indelqual --dindel -f {params.ref} -o {output} {input.bam}
+		"""
+
+rule call_variants:
+	input:
+		bam = os.path.join("results", dataSet, "alignment_files", "{sample}_sorted_indelqual.bam")
+	params:
+		ref = refPath
+	output:
+		os.path.join("results", dataSet, "variants", "{sample}_variants.vcf")
+	shell:
+		"""
+		ml lofreq
+		lofreq call -f {params.ref} -o {output} --call-indels {input.bam}
+		"""
+
+rule calculate_coverage_depth:
+	input:
+		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam")
+	output:
+		os.path.join("results", dataSet, "sample_data", "genome_coverage", "{sample}_coverage.txt")
+	shell:
+		"""
+		ml bedtools
+		bedtools genomecov -ibam {input} > {output}
+		"""
+
+rule calculate_alignment_data:
+	input:
+		dedupeR1 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R1.fastq"),
+		dedupeR2 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R2.fastq"),
+		sortedBAM = os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam")
+	output:
+		os.path.join("results", dataSet, "sample_data", "alignment_data", "{sample}_alignCounts.txt")
+	shell:
+		"""
+		ml samtools
+		bash ./workflow/scripts/calculate_alignment_data.sh {wildcards.sample} {input.dedupeR1} {input.dedupeR2} {input.sortedBAM} {output}
+		"""
+
+rule concat_alignment_data:
+	input:
+		expand(os.path.join("results", dataSet, "sample_data", "alignment_data", "{sample}_alignCounts.txt"), sample = SAMPLES)
+	output:
+		os.path.join("results", dataSet, "alignment_counts.txt")
+	shell:
+		"""
+		cat <(echo -e "sample\ttotal_reads\tleft_alignments\tright_alignments") {input} > {output}
+		"""
+
+rule annotate_mutations:
+	input:
+		variants = expand(os.path.join("results", dataSet, "variants", "{sample}_variants.vcf"), sample = SAMPLES),
+		alignments = expand(os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bedGraph"), sample = SAMPLES)
+	output:
+		annoVariant = os.path.join("results", dataSet, "variants", "annotated_variants", "{sample}_variants_annotated.txt")
+	shell:
+		"""
+		module load {R}
+		Rscript ./workflow/scripts/Annotate_Mutations.R
+		"""

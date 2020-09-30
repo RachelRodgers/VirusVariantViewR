@@ -2,5 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-/Combined_Data/*
-
+/data/*
+/results/*
+/logs_slurm/*

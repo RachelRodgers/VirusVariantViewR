@@ -1,5 +1,0 @@
-Combined_Data
-orchard_CW3_pooled
-orchard_CR6_pooled
-wilen_pooled
-wilen_full

@@ -54,6 +54,6 @@ cp slurm-submit/*.py ~/.config/snakemake
 	# production run (run steps):
 	snakemake --profile slurm_vvr
 	```
-(HTCF users): See slurm output files in logs_slurm/ directory which will generate inside the hecatomb_htcf_snake/ directory.
+(HTCF/Slurm users): See Slurm output files in logs_slurm/ directory which will generate inside the hecatomb_htcf_snake/ directory.
 
 7. Visualize the data locally with the [VirusVariantViewR-RShiny-Application](https://github.com/RachelRodgers/VirusVariantViewR-RShiny-Application)!

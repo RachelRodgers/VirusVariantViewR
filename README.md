@@ -21,12 +21,10 @@ How to use:
 1. Clone the repository (for HTCF users, clone to your /scratch/ directory):
 ```
 git clone --recurse-submodules https://github.com/RachelRodgers/VirusVariantViewR.git
-git submodule init
-git submodule update
 ```
 2. For HTCF or other Slurm users, make a directory to hold the snakemake profile:
 ```
-mkdir -p ~/.config/snakemake/slurm_hecatomb
+mkdir -p ~/.config/snakemake/slurm_vvr
 ```
 3. Copy the cluster submit and profile files to the appropriate locations:
 ```

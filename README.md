@@ -21,12 +21,10 @@ How to use:
 1. Clone the repository (for HTCF users, clone to your /scratch/ directory):
 ```
 git clone --recurse-submodules https://github.com/RachelRodgers/VirusVariantViewR.git
-git submodule init
-git submodule update
 ```
 2. For HTCF or other Slurm users, make a directory to hold the snakemake profile:
 ```
-mkdir -p ~/.config/snakemake/slurm_hecatomb
+mkdir -p ~/.config/snakemake/slurm_vvr
 ```
 3. Copy the cluster submit and profile files to the appropriate locations:
 ```
@@ -37,13 +35,14 @@ cp slurm-submit/*.py ~/.config/snakemake
 4. Create a directory to hold your raw sequencing reads and move your data into that directory.
 5. Edit the vvr_config.yaml file (under /config/) to adjust the data set name, path to your reads, and other parameters as needed.
 6. Submit in one of two ways:
+	
 	a. With sbatch script (preferred for HTCF/Slurm) users:
 	```
 	sbatch submit_vvr_snake.sbatch
 	```
 	b. Interactively (better for troubleshooting):
 	```
-	# start an interactie session (for HTCF users):
+	# start an interactive session (for HTCF users):
 	srun --mem=48G --cpus-per-task=8 -J hecatomb -p interactive --constraint=cpu_E52650 --pty /bin/bash -l
 	
 	# load snakemake:
@@ -55,5 +54,6 @@ cp slurm-submit/*.py ~/.config/snakemake
 	# production run (run steps):
 	snakemake --profile slurm_vvr
 	```
-(HTCF users): See slurm output files in logs_slurm/ directory which will generate inside the hecatomb_htcf_snake/ directory.
-7. Visualize the data with the VirusVariantViewR-RShiny-Application! Please see link above.
+(HTCF/Slurm users): See Slurm output files in logs_slurm/ directory which will generate inside the hecatomb_htcf_snake/ directory.
+
+7. Visualize the data locally with the [VirusVariantViewR-RShiny-Application](https://github.com/RachelRodgers/VirusVariantViewR-RShiny-Application)!

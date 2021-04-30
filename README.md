@@ -56,4 +56,5 @@ cp slurm-submit/*.py ~/.config/snakemake
 	```
 (HTCF/Slurm users): See Slurm output files in logs_slurm/ directory which will generate inside the hecatomb_htcf_snake/ directory.
 
-7. Visualize the data locally with the [VirusVariantViewR-RShiny-Application](https://github.com/RachelRodgers/VirusVariantViewR-RShiny-Application)!
+7. Pipeline output will be in the results directory (contained within a directory matching your DataSetName).
+8. Visualize the data locally with the [VirusVariantViewR-RShiny-Application](https://github.com/RachelRodgers/VirusVariantViewR-RShiny-Application)!

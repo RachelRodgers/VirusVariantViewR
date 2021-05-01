@@ -43,7 +43,7 @@ cp slurm-submit/*.py ~/.config/snakemake
 	b. Interactively (better for troubleshooting):
 	```
 	# start an interactive session (for HTCF users):
-	srun --mem=48G --cpus-per-task=8 -J hecatomb -p interactive --constraint=cpu_E52650 --pty /bin/bash -l
+	srun --mem=48G --cpus-per-task=8 -J interactive -p interactive --pty /bin/bash -l
 	
 	# load snakemake:
 	ml snakemake/5.10.0-python-3.6.5

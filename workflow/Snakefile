@@ -27,12 +27,12 @@ dataSetNameForR.write(dataSet)
 dataSetNameForR.close()
 
 # Tools
-bbtools = config["Tools"]["bbtools"]
-samtools = config["Tools"]["samtools"]
-bowtie2 = config["Tools"]["bowtie2"]
+BBTOOLS = config["Tools"]["bbtools"]
+SAMTOOLS = config["Tools"]["samtools"]
+BT2 = config["Tools"]["bowtie2"]
 bcftools = config["Tools"]["bcftools"]
-bedtools = config["Tools"]["bedtools"]
-lofreq = config["Tools"]["lofreq"]
+BEDTOOLS = config["Tools"]["bedtools"]
+LOFREQ = config["Tools"]["lofreq"]
 R = config["Tools"]["R"]
 
 # Reference & Data File Paths
@@ -87,8 +87,7 @@ rule trim_adapters:
 		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_adaptTrim_R2.fastq")
 	shell:
 		"""
-		ml bbtools
-		bbduk.sh \
+		bash {BBTOOLS}bbduk.sh \
 			in1={input.r1} in2={input.r2} out1={output.r1} out2={output.r2} \
 			ref=adapters \
 			ktrim=r k=23 mink=11 hdist=1 \
@@ -105,8 +104,7 @@ rule quality_trimming:
 		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_qualTrim_R2.fastq")
 	shell:
 		"""
-		ml bbtools
-		bbduk.sh \
+		bash {BBTOOLS}bbduk.sh \
 			in1={input.r1} in2={input.r2} out1={output.r1} out2={output.r2} \
 			qtrim=r trimq=25 minlength=75 \
 			{XMX}
@@ -120,8 +118,7 @@ rule deduplicate:
 		os.path.join("results", dataSet, "QC_reads", "{sample}_deduped.fastq")
 	shell:
 		"""
-		ml bbtools
-		dedupe.sh \
+		bash {BBTOOLS}dedupe.sh \
 			in1={input.r1} in2={input.r2} out={output} \
 			ac=f \
 			{XMX}
@@ -135,8 +132,8 @@ rule deinterleave:
 		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R2.fastq")
 	shell:
 		"""
-		ml bbtools
-		reformat.sh in={input} out1={output.r1} out2={output.r2} {XMX}
+		bash {BBTOOLS}reformat.sh \
+			in={input} out1={output.r1} out2={output.r2} {XMX}
 		"""
 
 rule align_to_ref_genome:
@@ -149,7 +146,8 @@ rule align_to_ref_genome:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_alignment.sam")
 	shell:
 		"""
-		ml bowtie2
+		eval "$(conda shell.bash hook)"
+		{BT2}
 		bowtie2 \
 			--no-unal -x {params.ref} \
 			-1 {input.r1} -2 {input.r2} -S {output}
@@ -163,7 +161,8 @@ rule samtools_view:
 	threads: 8
 	shell:
 		"""
-		ml samtools
+		eval "$(conda shell.bash hook)"
+		{SAMTOOLS}
 		samtools view -S -b {input} > {output} -@ {threads}
 		"""
 
@@ -175,7 +174,8 @@ rule samtools_sort:
 	threads: 8
 	shell:
 		"""
-		ml samtools
+		eval "$(conda shell.bash hook)"
+		{SAMTOOLS}
 		samtools sort {input} -o {output} -@ {threads}
 		"""
 
@@ -186,7 +186,8 @@ rule samtools_index:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam.bai")
 	shell:
 		"""
-		ml samtools
+		eval "$(conda shell.bash hook)"
+		{SAMTOOLS}
 		samtools index {input} {output} -@ {threads}
 		"""
 
@@ -197,7 +198,8 @@ rule genomecov:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bedGraph")
 	shell:
 		"""
-		ml bedtools
+		eval "$(conda shell.bash hook)"
+		{BEDTOOLS}
 		bedtools genomecov -bga -ibam {input} > {output}
 		""" 
 
@@ -210,7 +212,8 @@ rule add_indel_quality:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted_indelqual.bam")
 	shell:
 		"""
-		ml lofreq
+		eval "$(conda shell.bash hook)"
+		{LOFREQ}
 		lofreq indelqual --dindel -f {params.ref} -o {output} {input.bam}
 		"""
 
@@ -223,7 +226,8 @@ rule call_variants:
 		os.path.join("results", dataSet, "variants", "{sample}_variants.vcf")
 	shell:
 		"""
-		ml lofreq
+		eval "$(conda shell.bash hook)"
+		{LOFREQ}
 		lofreq call -f {params.ref} -o {output} --call-indels {input.bam}
 		"""
 
@@ -234,7 +238,8 @@ rule calculate_coverage_depth:
 		os.path.join("results", dataSet, "sample_data", "genome_coverage", "{sample}_coverage.txt")
 	shell:
 		"""
-		ml bedtools
+		eval "$(conda shell.bash hook)"
+		{BEDTOOLS}
 		bedtools genomecov -ibam {input} > {output}
 		"""
 
@@ -247,7 +252,8 @@ rule calculate_alignment_data:
 		os.path.join("results", dataSet, "sample_data", "alignment_data", "{sample}_alignCounts.txt")
 	shell:
 		"""
-		ml samtools
+		eval "$(conda shell.bash hook)"
+		{SAMTOOLS}
 		bash ./workflow/scripts/calculate_alignment_data.sh {wildcards.sample} {input.dedupeR1} {input.dedupeR2} {input.sortedBAM} {output}
 		"""
 
@@ -269,6 +275,6 @@ rule annotate_mutations:
 		annoVariant = os.path.join("results", dataSet, "variants", "annotated_variants", "{sample}_variants_annotated.txt")
 	shell:
 		"""
-		module load {R}
+		{R}
 		Rscript ./workflow/scripts/Annotate_Mutations.R
 		"""

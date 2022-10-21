@@ -11,7 +11,7 @@ source("./workflow/scripts/snakemake_helpers/snakemake_helpers.R")
 
 options(warn = -1)
 
-requiredPackages <- c("stringr", "data.table", "tidyverse")
+requiredPackages <- c("stringr", "data.table", "purrr", "dplyr", "magrittr")
 
 for (package in requiredPackages) {
   TryInstall(package)

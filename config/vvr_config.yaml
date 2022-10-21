@@ -16,13 +16,13 @@ Patterns:
   ReadExtensions: [".fastq.gz"]
 
 Tools:
-  bbtools: bbtools/38.26
-  samtools: samtools/1.9
-  bowtie2: bowtie2/2.3.5-python-3.6.5
-  bcftools: bcftools/1.9
-  bedtools: bedtools/2.27.1
-  lofreq: lofreq/2.1.4
-  R: r/3.6.3-python-3.6.5-java-11
+  bbtools: /ref/mtblab/software/bbmap_38.96/bbmap/
+  samtools: eval $( spack load --sh samtools@1.13)
+  bowtie2: eval $( spack load --sh bowtie2@2.4.2)
+  bcftools: 
+  bedtools: conda activate bedtools_2.30.0
+  lofreq: conda activate lofreq_2.1.5
+  R: eval $( spack load --sh r@4.1.1 )
  
 System:
   JavaMem: -Xmx48g

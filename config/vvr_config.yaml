@@ -2,7 +2,7 @@
 DataSetName: "small_test"
 
 Paths:
-  Reads: data
+  Reads: test_data
   AlignPath: resources/mnv_genomes_181120/Mod_CR6
 
 Data:

@@ -87,7 +87,8 @@ rule trim_adapters:
 		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_adaptTrim_R2.fastq")
 	shell:
 		"""
-		bash {BBTOOLS}bbduk.sh \
+		{BBTOOLS}
+		bbduk.sh \
 			in1={input.r1} in2={input.r2} out1={output.r1} out2={output.r2} \
 			ref=adapters \
 			ktrim=r k=23 mink=11 hdist=1 \
@@ -104,7 +105,8 @@ rule quality_trimming:
 		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_qualTrim_R2.fastq")
 	shell:
 		"""
-		bash {BBTOOLS}bbduk.sh \
+		{BBTOOLS}
+		bbduk.sh \
 			in1={input.r1} in2={input.r2} out1={output.r1} out2={output.r2} \
 			qtrim=r trimq=25 minlength=75 \
 			{XMX}
@@ -118,7 +120,8 @@ rule deduplicate:
 		os.path.join("results", dataSet, "QC_reads", "{sample}_deduped.fastq")
 	shell:
 		"""
-		bash {BBTOOLS}dedupe.sh \
+		{BBTOOLS}
+		dedupe.sh \
 			in1={input.r1} in2={input.r2} out={output} \
 			ac=f \
 			{XMX}
@@ -132,7 +135,8 @@ rule deinterleave:
 		r2 = os.path.join("results", dataSet, "QC_reads", "{sample}_deduplicated_R2.fastq")
 	shell:
 		"""
-		bash {BBTOOLS}reformat.sh \
+		{BBTOOLS}
+		reformat.sh \
 			in={input} out1={output.r1} out2={output.r2} {XMX}
 		"""
 
@@ -146,7 +150,6 @@ rule align_to_ref_genome:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_alignment.sam")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{BT2}
 		bowtie2 \
 			--no-unal -x {params.ref} \
@@ -161,7 +164,6 @@ rule samtools_view:
 	threads: 8
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{SAMTOOLS}
 		samtools view -S -b {input} > {output} -@ {threads}
 		"""
@@ -174,7 +176,6 @@ rule samtools_sort:
 	threads: 8
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{SAMTOOLS}
 		samtools sort {input} -o {output} -@ {threads}
 		"""
@@ -186,7 +187,6 @@ rule samtools_index:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bam.bai")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{SAMTOOLS}
 		samtools index {input} {output} -@ {threads}
 		"""
@@ -198,7 +198,6 @@ rule genomecov:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted.bedGraph")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{BEDTOOLS}
 		bedtools genomecov -bga -ibam {input} > {output}
 		""" 
@@ -212,7 +211,6 @@ rule add_indel_quality:
 		os.path.join("results", dataSet, "alignment_files", "{sample}_sorted_indelqual.bam")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{LOFREQ}
 		lofreq indelqual --dindel -f {params.ref} -o {output} {input.bam}
 		"""
@@ -226,7 +224,6 @@ rule call_variants:
 		os.path.join("results", dataSet, "variants", "{sample}_variants.vcf")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{LOFREQ}
 		lofreq call -f {params.ref} -o {output} --call-indels {input.bam}
 		"""
@@ -238,7 +235,6 @@ rule calculate_coverage_depth:
 		os.path.join("results", dataSet, "sample_data", "genome_coverage", "{sample}_coverage.txt")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{BEDTOOLS}
 		bedtools genomecov -ibam {input} > {output}
 		"""
@@ -252,7 +248,6 @@ rule calculate_alignment_data:
 		os.path.join("results", dataSet, "sample_data", "alignment_data", "{sample}_alignCounts.txt")
 	shell:
 		"""
-		eval "$(conda shell.bash hook)"
 		{SAMTOOLS}
 		bash ./workflow/scripts/calculate_alignment_data.sh {wildcards.sample} {input.dedupeR1} {input.dedupeR2} {input.sortedBAM} {output}
 		"""

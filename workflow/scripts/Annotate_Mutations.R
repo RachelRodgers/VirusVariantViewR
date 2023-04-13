@@ -18,7 +18,7 @@ for (package in requiredPackages) {
   
   if (!require(package, character.only = TRUE, quietly = TRUE)) {
     stop(cat("FATAL: Problem loading R package:", package, 
-             "(Annoate_Mutations.R)\n\n"),
+             "(Annotate_Mutations.R)\n\n"),
          call. = FALSE)
   }
 }
@@ -30,7 +30,7 @@ for (package in requiredBioCPackages) {
   
   if (!require(package, character.only = TRUE, quietly = TRUE)) {
     stop(cat("FATAL: Problem loading R package:", package, 
-             "(Annoate_Mutations.R)\n\n"),
+             "(Annotate_Mutations.R)\n\n"),
          call. = FALSE)
   }
 }

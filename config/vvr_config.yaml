@@ -17,11 +17,11 @@ Patterns:
 
 Tools:
   bbtools: eval $( spack load --sh bbmap@38.63 )
-  samtools: eval $( spack load --sh samtools@1.15.1)
-  bowtie2: eval $( /ref/lhlab/software/spack-0.19.2/bin/spack load --sh bowtie2@2.4.2)
+  samtools: eval $( spack load --sh samtools@1.15.1 )
+  bowtie2: eval $( /ref/lhlab/software/spack-0.19.2/bin/spack load --sh bowtie2@2.4.2 )
   bcftools: 
-  bedtools: eval $ ( /ref/lhlab/software/spack-0.19.2/bin/spack load --sh bedtools2@2.30.0)
-  lofreq: eval "$(conda shell.bash hook ) \ conda activate lofreq_2.1.5
+  bedtools: eval $( /ref/lhlab/software/spack-0.19.2/bin/spack load --sh bedtools2@2.30.0 )
+  lofreq: eval "$(conda shell.bash hook)"; conda activate lofreq_2.1.5
   R: eval $( spack load --sh r@4.2.2 )
  
 System:
